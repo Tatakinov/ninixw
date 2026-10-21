@@ -149,9 +149,12 @@ func (b *Baseware) StartSakura(name string) error {
 	return nil
 }
 
-func (b *Baseware) StopSakura(name string) {
+func (b *Baseware) StopSakura(name string, uuid string) {
 	b.sakuras.Lock(func(m map[string]*ghost.Sakura) {
 		delete(m, name)
+	})
+	b.uuids.Lock(func(m map[string]struct{}) {
+		delete(m, uuid)
 	})
 }
 

@@ -442,7 +442,7 @@ func (s *Sakura) MainLoop() {
 	}()
 	s.SendEvent("GET", map[string]bool{}, "OnBoot", s.ao.Shell.Descript["name"])
 	<- s.quit
-	s.parent.StopSakura(s.shiori.Key)
+	s.parent.StopSakura(s.shiori.Key, s.uuid)
 }
 
 func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, error) {
