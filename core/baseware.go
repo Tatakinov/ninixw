@@ -20,7 +20,7 @@ type Baseware struct {
 	sakuras with_mutex.WithMutex[string, *ghost.Sakura]
 	wg sync.WaitGroup
 	channel chan string
-	uuids map[string]bool
+	uuids with_mutex.WithMutex[string, struct{}]
 }
 
 func NewBaseware() *Baseware {
@@ -38,7 +38,7 @@ func NewBaseware() *Baseware {
 		sakuras: with_mutex.NewWithMutex[string, *ghost.Sakura](),
 		wg: sync.WaitGroup{},
 		channel: make(chan string),
-		uuids: map[string]bool{},
+		uuids: with_mutex.NewWithMutex[string, struct{}](),
 	}
 }
 
@@ -156,11 +156,16 @@ func (b *Baseware) StopSakura(name string) {
 }
 
 func (b *Baseware) RegisterUuid(uuid string) bool {
-	if b.uuids[uuid] {
-		return false
-	}
-	b.uuids[uuid] = true
-	return true
+	ret := false
+	b.uuids.Lock(func(m map[string]struct{}) {
+		_, ok := m[uuid]
+		if ok {
+			return
+		}
+		m[uuid] = struct{}{}
+		ret = true
+	})
+	return ret
 }
 
 func (b *Baseware) GetGhosts() [][]string {
