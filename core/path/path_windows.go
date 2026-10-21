@@ -1,0 +1,31 @@
+package path
+
+import "path/filepath"
+
+func HomeDir() string {
+	return filepath.Join(ExecutableDir(), ".ninix")
+}
+
+func AoDir() string {
+	return filepath.Join(ExecutableDir(), "internal", "ao")
+}
+
+func AiDir() string {
+	return filepath.Join(ExecutableDir(), "internal", "ai")
+}
+
+func SorakadoDir() string {
+	return filepath.Join(ExecutableDir(), "internal", "sorakado")
+}
+
+func ProxyDir() string {
+	return filepath.Join(ExecutableDir(), "internal", "proxy")
+}
+
+func ShmDir() string {
+	return filepath.Join(ExecutableDir(), "internal", "shm")
+}
+
+func Lib(lib string, dir string) string {
+	return filepath.Join(dir, lib)
+}

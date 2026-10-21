@@ -1,0 +1,31 @@
+# data file for the Fltk User Interface Designer (fluid)
+version 1.0403
+header_name {.h}
+code_name {.cxx}
+Function {make_window()} {open
+} {
+  Fl_Window {} {open
+    xywh {0 0 198 117} type Double visible
+  } {
+    Fl_Button {} {
+      label Yes
+      callback onOK
+      xywh {15 80 64 22}
+    }
+    Fl_Button {} {
+      label No
+      callback onCancel
+      xywh {119 80 64 22}
+    }
+    Fl_Group {} {
+      label Test open
+      xywh {36 15 128 60}
+    } {}
+  }
+}
+
+Function {onCancel(Fl_Widget *w, void *data)} {open selected
+} {}
+
+Function {onOK(Fl_Widget *w, void *data)} {open
+} {}
