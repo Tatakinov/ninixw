@@ -1,0 +1,12 @@
+#!/bin/sh
+
+export SAORI_FALLBACK_ALWAYS=1
+export SAORI_FALLBACK_PATH=/opt/ninixw/lib/saori
+export LD_LIBRARY_PATH=/opt/ninixw/lib:${LD_LIBRARY_PATH}
+export NINIXW_AO_PATH=/opt/ninixw/libexec
+export NINIXW_AI_PATH=/opt/ninixw/libexec
+export NINIXW_SORAKADO_PATH=/opt/ninixw/libexec
+export NINIXW_PROXY_PATH=/opt/ninixw/libexec
+export NINIXW_SHM_PATH=/opt/ninixw/libexec
+
+exec go run . $@
