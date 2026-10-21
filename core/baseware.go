@@ -1,10 +1,12 @@
 package main
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 
 	"ninixw-core/ghost"
@@ -159,4 +161,48 @@ func (b *Baseware) RegisterUuid(uuid string) bool {
 	}
 	b.uuids[uuid] = true
 	return true
+}
+
+func (b *Baseware) GetGhosts() [][]string {
+	s := make([][]string, 0)
+	b.ghosts.Lock(func(m map[string]ghost.Ghost) {
+		for k, v := range m {
+			s = append(s, []string{ v.Descript["name"], k })
+		}
+	})
+	slices.SortFunc(s, func(a []string, b []string) int {
+		result := cmp.Compare(a[0], b[0])
+		if result == 0 {
+			return cmp.Compare(a[1], b[1])
+		}
+		return result
+	})
+	return s
+}
+
+func (b *Baseware) GetRunningGhosts() map[string]struct{} {
+	running_ghosts := make(map[string]struct{})
+	b.sakuras.Lock(func(m map[string]*ghost.Sakura) {
+		for k, _ := range m {
+			running_ghosts[k] = struct{}{}
+		}
+	})
+	return running_ghosts
+}
+
+func (b *Baseware) GetBalloons() [][]string {
+	s := make([][]string, 0)
+	b.balloons.Lock(func(m map[string]ghost.Balloon) {
+		for k, v := range m {
+			s = append(s, []string{ v.Descript["name"], k })
+		}
+	})
+	slices.SortFunc(s, func(a []string, b []string) int {
+		result := cmp.Compare(a[0], b[0])
+		if result == 0 {
+			return cmp.Compare(a[1], b[1])
+		}
+		return result
+	})
+	return s
 }

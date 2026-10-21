@@ -1,12 +1,14 @@
 package ghost
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -59,6 +61,8 @@ type Sakura struct {
 	shiori shiori
 	ao ao
 	ai ai
+	current_shell string
+	current_balloon string
 	parent interfaces.IBaseware
 	alive bool
 	quit chan struct{}
@@ -117,6 +121,8 @@ func NewSakura(b interfaces.IBaseware, ghost Ghost, shell string, balloon Balloo
 		shiori: shiori,
 		ao: ao,
 		ai: ai,
+		current_shell: shell,
+		current_balloon: balloon.Key,
 		parent: b,
 		alive: true,
 		quit: make(chan struct{}),
@@ -980,61 +986,68 @@ func (s *Sakura) SendEvent(method string, opt map[string]bool, event string, arg
 				},
 			},
 		})
+		ghosts := s.parent.GetGhosts()
+		running := s.parent.GetRunningGhosts()
+		l := make([]MenuItem, 0, len(ghosts))
+		for _, v := range ghosts {
+			_, ok := running[v[1]]
+			l = append(l, MenuItem{
+				Type: "item",
+				Caption: v[0],
+				Valid: !ok,
+				Command: "ChangeGhost",
+				Args: []string{ v[1] },
+			})
+		}
 		menu = append(menu, MenuItem{
 			Type: "submenu",
 			Caption: "switch",
 			Valid: true,
-			List: []MenuItem{
-				MenuItem{
-					Type: "item",
-					Caption: "knowledge",
-					Valid: false,
-					Command: "ChangeGhost",
-					Args: []string{ "knowledgeable_kernel" },
-				},
-				MenuItem{
-					Type: "item",
-					Caption: "えみり",
-					Valid: true,
-					Command: "ChangeGhost",
-					Args: []string{ "emily4" },
-				},
-			},
+			List: l,
 		})
+		l = make([]MenuItem, 0, len(ghosts))
+		for _, v := range ghosts {
+			_, ok := running[v[1]]
+			l = append(l, MenuItem{
+				Type: "item",
+				Caption: v[0],
+				Valid: !ok,
+				Command: "SummonGhost",
+				Args: []string{ v[1] },
+			})
+		}
 		menu = append(menu, MenuItem{
 			Type: "submenu",
 			Caption: "call",
 			Valid: true,
-			List: []MenuItem{
-				MenuItem{
-					Type: "item",
-					Caption: "knowledge",
-					Valid: false,
-					Command: "SummonGhost",
-					Args: []string{ "knowledgeable_kernel" },
-				},
-				MenuItem{
-					Type: "item",
-					Caption: "えみり",
-					Valid: true,
-					Command: "SummonGhost",
-					Args: []string{ "emily4" },
-				},
-			},
+			List: l,
 		})
+		shells := make([][]string, 0, len(s.shiori.Shells))
+		for k, v := range s.shiori.Shells {
+			shells = append(shells, []string{ v.Descript["name"], k})
+		}
+		slices.SortFunc(shells, func(a []string, b []string) int {
+			result := cmp.Compare(a[0], b[0])
+			if result == 0 {
+				return cmp.Compare(a[1], b[1])
+			}
+			return result
+		})
+		l = make([]MenuItem, 0, len(shells))
+		for _, v := range shells {
+			l = append(l, MenuItem{
+				Type: "item",
+				Caption: v[0],
+				Valid: s.current_shell != v[1],
+				Command: "ChangeShell",
+				Args: []string{ v[1] },
+			})
+		}
 		menu = append(menu, MenuItem{
 			Type: "submenu",
 			Caption: "shell",
 			Valid: true,
-			List: []MenuItem{
-				MenuItem{
-					Type: "item",
-					Caption: "knowledge",
-					Valid: false,
-					Command: "ChangeShell",
-					Args: []string{ "master" },
-				},
-			},
+			List: l,
 		})
 		menu = append(menu, MenuItem{
 			Type: "dressup",
@@ -1042,19 +1055,22 @@ func (s *Sakura) SendEvent(method string, opt map[string]bool, event string, arg
 			Valid: true,
 			List: []MenuItem{},
 		})
+		balloons := s.parent.GetBalloons()
+		l = make([]MenuItem, 0, len(balloons))
+		for _, v := range balloons {
+			l = append(l, MenuItem{
+				Type: "item",
+				Caption: v[0],
+				Valid: s.current_balloon != v[1],
+				Command: "ChangeBalloon",
+				Args: []string{ v[1] },
+			})
+		}
 		menu = append(menu, MenuItem{
 			Type: "submenu",
 			Caption: "balloon",
 			Valid: true,
-			List: []MenuItem{
-				MenuItem{
-					Type: "item",
-					Caption: "端末",
-					Valid: true,
-					Command: "ChangeBalloon",
-					Args: []string{ "balloon_terminal" },
-				},
-			},
+			List: l,
 		})
 		menu = append(menu, MenuItem{
 			Type: "submenu",
