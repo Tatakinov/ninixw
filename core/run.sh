@@ -9,4 +9,6 @@ export NINIXW_SORAKADO_PATH=/opt/ninixw/libexec
 export NINIXW_PROXY_PATH=/opt/ninixw/libexec
 export NINIXW_SHM_PATH=/opt/ninixw/libexec
 
+export SDL_VIDEO_DRIVER=wayland
+
 exec go run . $@
