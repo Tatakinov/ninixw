@@ -153,11 +153,18 @@ func parseHTTP(r *bufio.Reader, method string, path string, protocol Proto) (Htt
 	header := make(map[string]string)
 	content := ""
 	for {
-		bytes, _, err := r.ReadLine()
-		if err != nil {
-			return HttpRequest{}, err
+		buffer := make([]byte, 0)
+		for {
+			bytes, is_prefix, err := r.ReadLine()
+			if err != nil {
+				return HttpRequest{}, err
+			}
+			buffer = append(buffer, bytes...)
+			if !is_prefix {
+				break
+			}
 		}
-		line := string(bytes)
+		line := string(buffer)
 		line = strings.TrimSpace(line)
 		if line == "" {
 			break
@@ -230,11 +237,18 @@ func parseSSTP(r *bufio.Reader, method string, protocol Proto) (SstpRequest, err
 	reference := make([]string, 0)
 	ifghost := ""
 	for {
-		bytes, _, err := r.ReadLine()
-		if err != nil {
-			return SstpRequest{}, err
+		buffer := make([]byte, 0)
+		for {
+			bytes, is_prefix, err := r.ReadLine()
+			if err != nil {
+				return SstpRequest{}, err
+			}
+			buffer = append(buffer, bytes...)
+			if !is_prefix {
+				break
+			}
 		}
-		line := string(bytes)
+		line := string(buffer)
 		line = strings.TrimSpace(line)
 		if line == "" {
 			break
