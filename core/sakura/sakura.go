@@ -1,4 +1,4 @@
-package ghost
+package sakura
 
 import (
 	"cmp"
@@ -15,6 +15,7 @@ import (
 	"time"
 	"uuid"
 
+	"ninixw-core/ghost"
 	"ninixw-core/interfaces"
 	"ninixw-core/path"
 	"ninixw-core/sakurascript"
@@ -100,7 +101,7 @@ func toSide(side int) string {
 	}
 }
 
-func NewSakura(b interfaces.IBaseware, ghost Ghost, shell string, balloon Balloon, u string) (*Sakura, error) {
+func NewSakura(b interfaces.IBaseware, ghost ghost.Ghost, shell string, balloon ghost.Balloon, u string) (*Sakura, error) {
 	shiori, err := newShiori(ghost)
 	if err != nil {
 		return &Sakura{}, err
@@ -1173,4 +1174,38 @@ func (s *Sakura) SakuraName() string {
 
 func (s *Sakura) LastScript() string {
 	return s.last_script
+}
+
+func (s *Sakura) ReloadShiori(b string) error {
+	s.shiori.Stop()
+	sh, err := newShiori(ghost.Ghost{ Key: s.shiori.Key, Path: s.shiori.Path, Descript: s.shiori.Descript })
+	if err != nil {
+		return err
+	}
+	s.shiori = sh
+	return nil
+}
+
+func (s *Sakura) LoadShell(shell string) error {
+	s.ao.Stop()
+	a, err := newAo(s.shiori.Shells[shell])
+	if err != nil {
+		return err
+	}
+	s.ao = a
+	return nil
+}
+
+func (s *Sakura) LoadBalloon(b string) error {
+	balloon, err := s.parent.GetBalloon(b)
+	if err != nil {
+		return err
+	}
+	s.ai.Stop()
+	a, err := newAi(balloon)
+	if err != nil {
+		return err
+	}
+	s.ai = a
+	return nil
 }

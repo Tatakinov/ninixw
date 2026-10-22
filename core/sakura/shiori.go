@@ -1,4 +1,4 @@
-package ghost
+package sakura
 
 import (
 	"bufio"
@@ -8,12 +8,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"ninixw-core/ghost"
 	"ninixw-core/path"
 	"ninixw-core/process"
 )
 
 type shiori struct {
-	Ghost
+	ghost.Ghost
 	process process.Process
 }
 
@@ -23,7 +24,7 @@ type Response struct {
 	Header map[string]string
 }
 
-func newShiori(ghost Ghost) (shiori, error) {
+func newShiori(ghost ghost.Ghost) (shiori, error) {
 	lib := ghost.Descript["shiori"]
 	if lib == "" {
 		return shiori{}, errors.New("shiori not found")

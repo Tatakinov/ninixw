@@ -1,4 +1,4 @@
-package ghost
+package sakura
 
 type MenuItem struct {
 	Type string		`json:"type"`

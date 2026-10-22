@@ -12,7 +12,6 @@ import (
 	"golang.org/x/text/transform"
 
 	"ninixw-core/path"
-	"ninixw-core/process"
 )
 
 type baseInfo struct {
@@ -25,18 +24,8 @@ type Shell struct {
 	baseInfo
 }
 
-type ao struct {
-	Shell
-	sorakado
-}
-
 type Balloon struct {
 	baseInfo
-}
-
-type ai struct {
-	Balloon
-	sorakado
 }
 
 type Ghost struct {
@@ -114,62 +103,4 @@ func NewBalloon(p string) (Balloon, error) {
 		return Balloon{}, err
 	}
 	return Balloon{ baseInfo: baseInfo{ Key: filepath.Base(p), Path: p, Descript: desc } }, nil
-}
-
-func newAo(shell Shell) (ao, error) {
-	exe := shell.Descript["ao"]
-	if exe == "" {
-		exe = "sorakado_builtin.exe"
-	}
-	s := []string{
-		path.AoDir(),
-		path.SorakadoDir(),
-		path.ExecutableDir(),
-	}
-	for _, p := range s {
-		process, err := process.NewProcess(filepath.Join(p, exe))
-		if err != nil {
-			continue
-		}
-		return ao {
-			Shell: shell,
-			sorakado: sorakado {
-				process: process,
-			},
-		}, nil
-	}
-	return ao{}, errors.New("sorakado not found")
-}
-
-func (ao ao) Stop() error {
-	return ao.sorakado.Stop()
-}
-
-func newAi(balloon Balloon) (ai, error) {
-	exe := balloon.Descript["ai"]
-	if exe == "" {
-		exe = "sorakado_builtin.exe"
-	}
-	s := []string{
-		path.AiDir(),
-		path.SorakadoDir(),
-		path.ExecutableDir(),
-	}
-	for _, p := range s {
-		process, err := process.NewProcess(filepath.Join(p, exe))
-		if err != nil {
-			continue
-		}
-		return ai {
-			Balloon: balloon,
-			sorakado: sorakado {
-				process: process,
-			},
-		}, nil
-	}
-	return ai{}, errors.New("sorakado not found")
-}
-
-func (ai ai) Stop() error {
-	return ai.sorakado.Stop()
 }

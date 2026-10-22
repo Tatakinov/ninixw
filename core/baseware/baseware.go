@@ -1,4 +1,4 @@
-package main
+package baseware
 
 import (
 	"cmp"
@@ -13,13 +13,14 @@ import (
 	"ninixw-core/ghost"
 	"ninixw-core/interfaces"
 	"ninixw-core/path"
+	"ninixw-core/sakura"
 	"ninixw-core/with_mutex"
 )
 
 type Baseware struct {
 	ghosts with_mutex.WithMutex[string, ghost.Ghost]
 	balloons with_mutex.WithMutex[string, ghost.Balloon]
-	sakuras with_mutex.WithMutex[string, *ghost.Sakura]
+	sakuras with_mutex.WithMutex[string, *sakura.Sakura]
 	wg sync.WaitGroup
 	channel chan string
 	uuids with_mutex.WithMutex[string, struct{}]
@@ -37,7 +38,7 @@ func NewBaseware() *Baseware {
 	return &Baseware{
 		ghosts: with_mutex.NewWithMutex[string, ghost.Ghost](),
 		balloons: with_mutex.NewWithMutex[string, ghost.Balloon](),
-		sakuras: with_mutex.NewWithMutex[string, *ghost.Sakura](),
+		sakuras: with_mutex.NewWithMutex[string, *sakura.Sakura](),
 		wg: sync.WaitGroup{},
 		channel: make(chan string),
 		uuids: with_mutex.NewWithMutex[string, struct{}](),
@@ -81,7 +82,7 @@ func (b *Baseware) Run(ghost_name string) {
 		if ghost_name == "" {
 			ghost_name = "knowledgeable_kernel"
 		}
-		err := b.StartSakura(ghost_name, "system", &ghost.Sakura{})
+		err := b.StartSakura(ghost_name, "system", &sakura.Sakura{})
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -148,56 +149,56 @@ func (b *Baseware) StartSakura(name string, reason string, from interfaces.ISaku
 			break
 		}
 	})
-	sakura, err := ghost.NewSakura(b, g, s, balloon, u)
+	instance, err := sakura.NewSakura(b, g, s, balloon, u)
 	if err != nil {
 		return err
 	}
-	b.sakuras.Lock(func(m map[string]*ghost.Sakura) {
-		m["knowledgeable_kernel"] = sakura
+	b.sakuras.Lock(func(m map[string]*sakura.Sakura) {
+		m["knowledgeable_kernel"] = instance
 	})
 	b.wg.Add(1)
 	go func() {
 		defer b.wg.Done()
 		switch reason {
 		case "system":
-			sakura.SendEvent(ghost.Event{
+			instance.SendEvent(sakura.Event{
 				Method: "GET",
 				Option: make(map[string]struct{}),
 				Event: "OnBoot",
 				Reference: []string{ g.Shells[s].Descript["name"] },
 			})
 		case "change":
-			sakura.SendEvent(ghost.Event{
+			instance.SendEvent(sakura.Event{
 				Method: "GET",
 				Option: make(map[string]struct{}),
 				Event: "OnGhostChanged",
 				Reference: []string{ from.SakuraName(), from.LastScript(), from.GhostName(), from.GhostPath() },
-			}, ghost.Event{
+			}, sakura.Event{
 				Method: "GET",
 				Option: make(map[string]struct{}),
 				Event: "OnBoot",
 				Reference: []string{ g.Shells[s].Descript["name"] },
 			})
 		case "call":
-			sakura.SendEvent(ghost.Event{
+			instance.SendEvent(sakura.Event{
 				Method: "GET",
 				Option: make(map[string]struct{}),
 				Event: "OnGhostCalled",
 				Reference: []string{ from.SakuraName(), from.LastScript(), from.GhostName(), from.GhostPath() },
-			}, ghost.Event{
+			}, sakura.Event{
 				Method: "GET",
 				Option: make(map[string]struct{}),
 				Event: "OnBoot",
 				Reference: []string{ g.Shells[s].Descript["name"] },
 			})
 		}
-		sakura.MainLoop()
+		instance.MainLoop()
 	}()
 	return nil
 }
 
 func (b *Baseware) StopSakura(name string, uuid string) {
-	b.sakuras.Lock(func(m map[string]*ghost.Sakura) {
+	b.sakuras.Lock(func(m map[string]*sakura.Sakura) {
 		delete(m, name)
 	})
 	b.uuids.Lock(func(m map[string]struct{}) {
@@ -224,7 +225,7 @@ func (b *Baseware) GetGhosts() [][]string {
 
 func (b *Baseware) GetRunningGhosts() map[string]struct{} {
 	running_ghosts := make(map[string]struct{})
-	b.sakuras.Lock(func(m map[string]*ghost.Sakura) {
+	b.sakuras.Lock(func(m map[string]*sakura.Sakura) {
 		for k, _ := range m {
 			running_ghosts[k] = struct{}{}
 		}
@@ -247,4 +248,16 @@ func (b *Baseware) GetBalloons() [][]string {
 		return result
 	})
 	return s
+}
+
+func (b *Baseware) GetBalloon(balloon string) (ghost.Balloon, error) {
+	var ba ghost.Balloon
+	var ok bool
+	b.balloons.Lock(func(m map[string]ghost.Balloon) {
+		ba, ok = m[balloon]
+	})
+	if !ok {
+		return ghost.Balloon{}, errors.New(fmt.Sprintf("balloon not found: %s", balloon))
+	}
+	return ba, nil
 }

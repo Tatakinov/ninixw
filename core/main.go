@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"ninixw-core/baseware"
 	"ninixw-core/path"
 )
 
@@ -48,7 +49,7 @@ func main() {
 	}
 	shm_cmd.Start()
 
-	baseware := NewBaseware()
+	baseware := baseware.NewBaseware()
 	baseware.Load()
 	baseware.Run(*ghost_name)
 

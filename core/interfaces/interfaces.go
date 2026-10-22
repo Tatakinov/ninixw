@@ -1,5 +1,9 @@
 package interfaces
 
+import (
+	"ninixw-core/ghost"
+)
+
 type ISakura interface {
 	GhostPath() string
 	GhostName() string
@@ -13,4 +17,5 @@ type IBaseware interface {
 	GetGhosts() [][]string
 	GetRunningGhosts() map[string]struct{}
 	GetBalloons() [][]string
+	GetBalloon(b string) (ghost.Balloon, error)
 }

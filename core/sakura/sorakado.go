@@ -1,4 +1,4 @@
-package ghost
+package sakura
 
 import (
 	"fmt"
@@ -32,3 +32,4 @@ func (s sorakado) Request(method string, command string, args ...string) (string
 func (s sorakado) Stop() error {
 	return s.process.Stop()
 }
+
