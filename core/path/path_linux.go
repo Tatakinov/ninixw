@@ -54,5 +54,5 @@ func ShmDir() string {
 }
 
 func Lib(lib string, dir string) string {
-	return lib
+	return filepath.Base(lib)
 }
