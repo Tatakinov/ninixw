@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
+	"uuid"
 
 	"ninixw-core/ghost"
+	"ninixw-core/interfaces"
 	"ninixw-core/path"
 	"ninixw-core/with_mutex"
 )
@@ -79,7 +81,7 @@ func (b *Baseware) Run(ghost_name string) {
 		if ghost_name == "" {
 			ghost_name = "knowledgeable_kernel"
 		}
-		err := b.StartSakura(ghost_name)
+		err := b.StartSakura(ghost_name, "system", &ghost.Sakura{})
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -87,7 +89,7 @@ func (b *Baseware) Run(ghost_name string) {
 	b.wg.Wait()
 }
 
-func (b *Baseware) StartSakura(name string) error {
+func (b *Baseware) StartSakura(name string, reason string, from interfaces.ISakura) error {
 	var g ghost.Ghost
 	var balloon ghost.Balloon
 	var ok bool
@@ -134,7 +136,19 @@ func (b *Baseware) StartSakura(name string) error {
 	if !ok {
 		return errors.New(fmt.Sprintf("shell not found"))
 	}
-	sakura, err := ghost.NewSakura(b, g, s, balloon)
+	u := ""
+	b.uuids.Lock(func(m map[string]struct{}) {
+		for {
+			u = uuid.New().String()
+			_, ok := m[u]
+			if ok {
+				continue
+			}
+			m[u] = struct{}{}
+			break
+		}
+	})
+	sakura, err := ghost.NewSakura(b, g, s, balloon, u)
 	if err != nil {
 		return err
 	}
@@ -144,6 +158,39 @@ func (b *Baseware) StartSakura(name string) error {
 	b.wg.Add(1)
 	go func() {
 		defer b.wg.Done()
+		switch reason {
+		case "system":
+			sakura.SendEvent(ghost.Event{
+				Method: "GET",
+				Option: make(map[string]struct{}),
+				Event: "OnBoot",
+				Reference: []string{ g.Shells[s].Descript["name"] },
+			})
+		case "change":
+			sakura.SendEvent(ghost.Event{
+				Method: "GET",
+				Option: make(map[string]struct{}),
+				Event: "OnGhostChanged",
+				Reference: []string{ from.SakuraName(), from.LastScript(), from.GhostName(), from.GhostPath() },
+			}, ghost.Event{
+				Method: "GET",
+				Option: make(map[string]struct{}),
+				Event: "OnBoot",
+				Reference: []string{ g.Shells[s].Descript["name"] },
+			})
+		case "call":
+			sakura.SendEvent(ghost.Event{
+				Method: "GET",
+				Option: make(map[string]struct{}),
+				Event: "OnGhostCalled",
+				Reference: []string{ from.SakuraName(), from.LastScript(), from.GhostName(), from.GhostPath() },
+			}, ghost.Event{
+				Method: "GET",
+				Option: make(map[string]struct{}),
+				Event: "OnBoot",
+				Reference: []string{ g.Shells[s].Descript["name"] },
+			})
+		}
 		sakura.MainLoop()
 	}()
 	return nil
@@ -156,19 +203,6 @@ func (b *Baseware) StopSakura(name string, uuid string) {
 	b.uuids.Lock(func(m map[string]struct{}) {
 		delete(m, uuid)
 	})
-}
-
-func (b *Baseware) RegisterUuid(uuid string) bool {
-	ret := false
-	b.uuids.Lock(func(m map[string]struct{}) {
-		_, ok := m[uuid]
-		if ok {
-			return
-		}
-		m[uuid] = struct{}{}
-		ret = true
-	})
-	return ret
 }
 
 func (b *Baseware) GetGhosts() [][]string {

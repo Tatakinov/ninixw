@@ -57,6 +57,13 @@ type directionInfo struct {
 	direction map[int]bool
 }
 
+type Event struct {
+	Method string
+	Option map[string]struct{}
+	Event string
+	Reference []string
+}
+
 type Sakura struct {
 	shiori shiori
 	ao ao
@@ -67,6 +74,7 @@ type Sakura struct {
 	alive bool
 	quit chan struct{}
 	script_ch chan script
+	last_script string
 	timer_ch with_mutex.WithMutex[string, func()]
 	wait_timer *time.Timer
 	balloon_timeout int
@@ -92,7 +100,7 @@ func toSide(side int) string {
 	}
 }
 
-func NewSakura(b interfaces.IBaseware, ghost Ghost, shell string, balloon Balloon) (*Sakura, error) {
+func NewSakura(b interfaces.IBaseware, ghost Ghost, shell string, balloon Balloon, u string) (*Sakura, error) {
 	shiori, err := newShiori(ghost)
 	if err != nil {
 		return &Sakura{}, err
@@ -108,13 +116,6 @@ func NewSakura(b interfaces.IBaseware, ghost Ghost, shell string, balloon Balloo
 		ao.process.Stop()
 		return &Sakura{}, err
 	}
-	u := uuid.New().String()
-	for {
-		if b.RegisterUuid(u) {
-			break
-		}
-		u = uuid.New().String()
-	}
 	u_ao := uuid.New().String()
 	u_ai := uuid.New().String()
 	s := &Sakura{
@@ -127,6 +128,7 @@ func NewSakura(b interfaces.IBaseware, ghost Ghost, shell string, balloon Balloo
 		alive: true,
 		quit: make(chan struct{}),
 		script_ch: make(chan script, 100),
+		last_script: "",
 		timer_ch: with_mutex.NewWithMutex[string, func()](),
 		wait_timer: time.NewTimer(0 * time.Second),
 		balloon_timeout: kBalloonTimeout,
@@ -181,7 +183,7 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 	case "NOTIFY", "SEND":
 		event, _ := req.Header["Event"]
 		if event != "" {
-			s.SendEvent("GET", map[string]bool{}, event, req.Reference...)
+			s.SendEvent(Event{ Method: "GET", Option: make(map[string]struct{}), Event: event, Reference: req.Reference })
 		} else {
 			// TODO ifghost
 			data, _ := req.Script[""]
@@ -314,10 +316,44 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 			s.direction_info.m.Unlock()
 			s.ai.Request("NOTIFY", "SetDirection", strconv.Itoa(side), i_direction)
 			s.ai.Request("NOTIFY", "SetPosition", strconv.Itoa(side), strconv.Itoa(x - monitor.X), strconv.Itoa(y - monitor.Y), strconv.Itoa(monitor.X), strconv.Itoa(monitor.Y))
+		case "ChangeGhost":
+			if !s.fromAo(req) {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			if len(req.Reference) == 0 {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			s.SendEvent(Event{
+				Method: "GET",
+				Option: make(map[string]struct{}),
+				Event: "OnGhostChanging",
+				Reference: []string{ "user" },
+			}, Event{
+				Method: "GET",
+				Option: make(map[string]struct{}),
+				Event: "OnClose",
+				Reference: []string{ "user" },
+			})
+			<- s.quit
+			err := s.parent.StartSakura(req.Reference[0], "change", s)
+			if err != nil {
+				fmt.Println(err)
+			}
+		case "SummonGhost":
+			if !s.fromAo(req) {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			if len(req.Reference) == 0 {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			err := s.parent.StartSakura(req.Reference[0], "call", s)
+			if err != nil {
+				fmt.Println(err)
+			}
 		case "CloseGhost":
-			s.SendEvent("GET", map[string]bool{}, "OnClose", "user")
+			s.SendEvent(Event{ Method: "GET", Option: make(map[string]struct{}), Event: "OnClose", Reference: []string{ "user" } })
 		case "CloseAllGhost":
-			s.SendEvent("GET", map[string]bool{}, "OnCloseAll", "user")
+			s.SendEvent(Event{ Method: "GET", Option: make(map[string]struct{}), Event: "OnCloseAll", Reference: []string{ "user" } })
 		}
 	}
 	return sstp.NewResponse(204, "No Content", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
@@ -371,12 +407,10 @@ func (s *Sakura) MainLoop() {
 		timeout_ch := make(<- chan time.Time)
 		restore_ch := make(<- chan time.Time)
 		for {
-			if !s.alive {
-				break
-			}
 			select {
 			case data, ok := <- s.script_ch:
 				if ok {
+					s.last_script = data.Data
 					asts = sakurascript.Parse(sakurascript.Lex(data.Data))
 					if len(asts) == 0 {
 						continue
@@ -405,7 +439,7 @@ func (s *Sakura) MainLoop() {
 				}
 			case <- onsecondchange_ticker.C:
 				if len(asts) == 0 {
-					s.SendEvent("GET", map[string]bool{}, "OnSecondChange", "", "0", "0", "1")
+					s.SendEvent(Event{ Method: "GET", Option: make(map[string]struct{}), Event: "OnSecondChange", Reference: []string{ "", "0", "0", "1" } })
 				}
 			case <- timeout_ch:
 				timeout_ch = make(chan time.Time)
@@ -414,11 +448,14 @@ func (s *Sakura) MainLoop() {
 			case <- restore_ch:
 				restore_ch = make(chan time.Time)
 				// TODO get surface id
-				s.SendEvent("GET", map[string]bool{}, "OnSurfaceRestore")
+				s.SendEvent(Event{ Method: "GET", Option: make(map[string]struct{}), Event: "OnSurfaceRestore", Reference: []string{} })
 			case <- s.wait_timer.C:
 				s.paused = false
 				ch <- struct{}{}
 			case <- ch:
+				if len(asts) == 0 && !s.alive {
+					return
+				}
 				if len(asts) == 0 || s.paused {
 					continue
 				}
@@ -440,7 +477,6 @@ func (s *Sakura) MainLoop() {
 			}
 		}
 	}()
-	s.SendEvent("GET", map[string]bool{}, "OnBoot", s.ao.Shell.Descript["name"])
 	<- s.quit
 	s.parent.StopSakura(s.shiori.Key, s.uuid)
 }
@@ -489,7 +525,7 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 					if ast.Args[0] == "notify" {
 						method = "NOTIFY"
 					}
-					s.SendEvent(method, make(map[string]bool), ast.Args[1], ast.Args[2:]...)
+					s.SendEvent(Event{ Method: method, Option: make(map[string]struct{}), Event: ast.Args[1], Reference: ast.Args[2:] })
 				case "timerraise", "timernotify":
 					if len(ast.Args) < 4 {
 						return asts[index:], errors.New(`invalid args size in \![raise/notify]`)
@@ -535,7 +571,7 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 								case <- s.quit:
 									return
 								case <- ch:
-									s.SendEvent(method, make(map[string]bool), ast.Args[3], ast.Args[4:]...)
+									s.SendEvent(Event{ Method: method, Option: make(map[string]struct{}), Event: ast.Args[3], Reference: ast.Args[4:] })
 									if !loop {
 										s.timer_ch.Lock(func(m map[string]func()) {
 											_, ok := m[ast.Args[3]]
@@ -859,249 +895,282 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 	return asts[index:], nil
 }
 
-func (s *Sakura) SendEvent(method string, opt map[string]bool, event string, args ...string) {
-	res, ok := s.shiori.Request(method, event, args...)
-	if !ok {
-		fmt.Println("something wrong")
+func (s *Sakura) SendEvent(event ...Event) {
+	if len(event) == 0 {
 		return
 	}
-	v, ok := res.Header["Value"]
-	if ok {
-		if opt["notranslate"] {
-			s.script_ch <- script{ Data: v, Embed: opt["embed"] }
+	var e Event
+	v := ""
+	for _, e = range event {
+		res, ok := s.shiori.Request(e.Method, e.Event, e.Reference...)
+		if !ok {
+			fmt.Println("something wrong")
+			return
+		}
+		v, ok = res.Header["Value"]
+		if ok {
+			break
+		}
+	}
+	if v != "" {
+		if _, ok := e.Option["notranslate"]; ok {
+			_, ok = e.Option["embed"]
+			s.script_ch <- script{ Data: v, Embed: ok }
 		} else {
-			res, ok = s.shiori.Request("GET", "OnTranslate", v, "", event, strings.Join(args, "\x01"))
+			res, ok := s.shiori.Request("GET", "OnTranslate", v, "", e.Event, strings.Join(e.Reference, "\x01"))
 			if !ok {
 				fmt.Println("something wrong in OnTranslate")
 			}
 			t, ok := res.Header["Value"]
 			if ok {
-				s.script_ch <- script{ Data: t, Embed: opt["embed"] }
+				_, ok = e.Option["embed"]
+				s.script_ch <- script{ Data: t, Embed: ok }
 			} else {
-				s.script_ch <- script{ Data: v, Embed: opt["embed"] }
+				_, ok = e.Option["embed"]
+				s.script_ch <- script{ Data: v, Embed: ok }
 			}
 		}
 	}
-	switch event {
-	case "OnCloseAll":
+	switch e.Event {
+	case "OnCloseAll", "OnClose", "OnGhostChanging":
 		s.alive = false
 	case "OnMouseClick":
-		if len(args) < 6 || args[5] != "1" || v != "" {
+		if len(e.Reference) < 6 || e.Reference[5] != "1" || v != "" {
 			return
 		}
-		n, err := strconv.Atoi(args[3])
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		menu := make([]MenuItem, 0)
-		side := toSide(n)
-		res, ok := s.shiori.Request("GET", side + ".portalsites")
-		if !ok {
-			return
-		}
-		submenu := make([]MenuItem, 0)
-		for _, line := range strings.Split(res.Header["Value"], "\x02") {
-			slice := strings.Split(line, "\x01")
-			if len(slice) < 2 {
-				continue
-			}
-			submenu = append(submenu, MenuItem{
-				Type: "item",
-				Caption: slice[0],
-				Valid: true,
-				Command: "VisitSite",
-				Args: slice[1:],
-			})
-		}
-		menu = append(menu, MenuItem{
-			Type: "submenu",
-			Caption: "portal",
-			List: submenu,
-		})
-		res, ok = s.shiori.Request("GET", side + ".recommendsites")
-		if !ok {
-			return
-		}
-		submenu = make([]MenuItem, 0)
-		for _, line := range strings.Split(res.Header["Value"], "\x02") {
-			slice := strings.Split(line, "\x01")
-			if len(slice) < 2 {
-				continue
-			}
-			submenu = append(submenu, MenuItem{
-				Type: "item",
-				Caption: slice[0],
-				Valid: true,
-				Command: "VisitSite",
-				Args: slice[1:],
-			})
-		}
-		menu = append(menu, MenuItem{
-			Type: "submenu",
-			Caption: "recommend",
-			Valid: true,
-			List: submenu,
-		})
-		menu = append(menu, MenuItem{
-			Type: "item",
-			Caption: "update",
-			Valid: true,
-			Command: "UpdateGhost",
-		})
-		menu = append(menu, MenuItem{
-			Type: "item",
-			Caption: "vanish",
-			Command: "VanishGhost",
-		})
-		menu = append(menu, MenuItem{
-			Type: "submenu",
-			Caption: "function",
-			Valid: true,
-			List: []MenuItem{
-				MenuItem{
-					Type: "item",
-					Caption: "Script Inputbox",
-					Valid: true,
-					Command: "OpenScriptInputbox",
-				},
-				MenuItem{
-					Type: "item",
-					Caption: "Script Log",
-					Valid: true,
-					Command: "OpenScriptLog",
-				},
-			},
-		})
-		menu = append(menu, MenuItem{
-			Type: "submenu",
-			Caption: "preferences",
-			Valid: true,
-			List: []MenuItem{
-				MenuItem{
-					Type: "item",
-					Caption: "Preferences",
-					Valid: true,
-					Command: "OpenPreferences",
-				},
-			},
-		})
-		ghosts := s.parent.GetGhosts()
-		running := s.parent.GetRunningGhosts()
-		l := make([]MenuItem, 0, len(ghosts))
-		for _, v := range ghosts {
-			_, ok := running[v[1]]
-			l = append(l, MenuItem{
-				Type: "item",
-				Caption: v[0],
-				Valid: !ok,
-				Command: "ChangeGhost",
-				Args: []string{ v[1] },
-			})
-		}
-		menu = append(menu, MenuItem{
-			Type: "submenu",
-			Caption: "switch",
-			Valid: true,
-			List: l,
-		})
-		l = make([]MenuItem, 0, len(ghosts))
-		for _, v := range ghosts {
-			_, ok := running[v[1]]
-			l = append(l, MenuItem{
-				Type: "item",
-				Caption: v[0],
-				Valid: !ok,
-				Command: "SummonGhost",
-				Args: []string{ v[1] },
-			})
-		}
-		menu = append(menu, MenuItem{
-			Type: "submenu",
-			Caption: "call",
-			Valid: true,
-			List: l,
-		})
-		shells := make([][]string, 0, len(s.shiori.Shells))
-		for k, v := range s.shiori.Shells {
-			shells = append(shells, []string{ v.Descript["name"], k})
-		}
-		slices.SortFunc(shells, func(a []string, b []string) int {
-			result := cmp.Compare(a[0], b[0])
-			if result == 0 {
-				return cmp.Compare(a[1], b[1])
-			}
-			return result
-		})
-		l = make([]MenuItem, 0, len(shells))
-		for _, v := range shells {
-			l = append(l, MenuItem{
-				Type: "item",
-				Caption: v[0],
-				Valid: s.current_shell != v[1],
-				Command: "ChangeShell",
-				Args: []string{ v[1] },
-			})
-		}
-		menu = append(menu, MenuItem{
-			Type: "submenu",
-			Caption: "shell",
-			Valid: true,
-			List: l,
-		})
-		menu = append(menu, MenuItem{
-			Type: "dressup",
-			Caption: "costume",
-			Valid: true,
-			List: []MenuItem{},
-		})
-		balloons := s.parent.GetBalloons()
-		l = make([]MenuItem, 0, len(balloons))
-		for _, v := range balloons {
-			l = append(l, MenuItem{
-				Type: "item",
-				Caption: v[0],
-				Valid: s.current_balloon != v[1],
-				Command: "ChangeBalloon",
-				Args: []string{ v[1] },
-			})
-		}
-		menu = append(menu, MenuItem{
-			Type: "submenu",
-			Caption: "balloon",
-			Valid: true,
-			List: l,
-		})
-		menu = append(menu, MenuItem{
-			Type: "submenu",
-			Caption: "info",
-			Valid: true,
-			List: []MenuItem{
-				MenuItem{
-					Type: "item",
-					Caption: "ベースウェアについて",
-					Valid: true,
-					Command: "ShowBasewareVersion",
-				},
-			},
-		})
-		menu = append(menu, MenuItem{
-			Type: "item",
-			Caption: "close",
-			Valid: true,
-			Command: "CloseGhost",
-		})
-		menu = append(menu, MenuItem{
-			Type: "item",
-			Caption: "close all",
-			Valid: true,
-			Command: "CloseAllGhost",
-		})
-		bytes, err := json.Marshal(menu)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		s.ao.Request("NOTIFY", "NotifyMenuInfo", string(bytes))
+		s.openMenu(e.Reference[3])
 	}
+}
+
+func (s *Sakura) openMenu(from string) {
+	n, err := strconv.Atoi(from)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	menu := make([]MenuItem, 0)
+	side := toSide(n)
+	res, ok := s.shiori.Request("GET", side + ".portalsites")
+	if !ok {
+		return
+	}
+	submenu := make([]MenuItem, 0)
+	for _, line := range strings.Split(res.Header["Value"], "\x02") {
+		slice := strings.Split(line, "\x01")
+		if len(slice) < 2 {
+			continue
+		}
+		submenu = append(submenu, MenuItem{
+			Type: "item",
+			Caption: slice[0],
+			Valid: true,
+			Command: "VisitSite",
+			Args: slice[1:],
+		})
+	}
+	menu = append(menu, MenuItem{
+		Type: "submenu",
+		Caption: "portal",
+		List: submenu,
+	})
+	res, ok = s.shiori.Request("GET", side + ".recommendsites")
+	if !ok {
+		return
+	}
+	submenu = make([]MenuItem, 0)
+	for _, line := range strings.Split(res.Header["Value"], "\x02") {
+		slice := strings.Split(line, "\x01")
+		if len(slice) < 2 {
+			continue
+		}
+		submenu = append(submenu, MenuItem{
+			Type: "item",
+			Caption: slice[0],
+			Valid: true,
+			Command: "VisitSite",
+			Args: slice[1:],
+		})
+	}
+	menu = append(menu, MenuItem{
+		Type: "submenu",
+		Caption: "recommend",
+		Valid: true,
+		List: submenu,
+	})
+	menu = append(menu, MenuItem{
+		Type: "item",
+		Caption: "update",
+		Valid: true,
+		Command: "UpdateGhost",
+	})
+	menu = append(menu, MenuItem{
+		Type: "item",
+		Caption: "vanish",
+		Command: "VanishGhost",
+	})
+	menu = append(menu, MenuItem{
+		Type: "submenu",
+		Caption: "function",
+		Valid: true,
+		List: []MenuItem{
+			MenuItem{
+				Type: "item",
+				Caption: "Script Inputbox",
+				Valid: true,
+				Command: "OpenScriptInputbox",
+			},
+			MenuItem{
+				Type: "item",
+				Caption: "Script Log",
+				Valid: true,
+				Command: "OpenScriptLog",
+			},
+		},
+	})
+	menu = append(menu, MenuItem{
+		Type: "submenu",
+		Caption: "preferences",
+		Valid: true,
+		List: []MenuItem{
+			MenuItem{
+				Type: "item",
+				Caption: "Preferences",
+				Valid: true,
+				Command: "OpenPreferences",
+			},
+		},
+	})
+	ghosts := s.parent.GetGhosts()
+	running := s.parent.GetRunningGhosts()
+	l := make([]MenuItem, 0, len(ghosts))
+	for _, v := range ghosts {
+		_, ok := running[v[1]]
+		l = append(l, MenuItem{
+			Type: "item",
+			Caption: v[0],
+			Valid: !ok,
+			Command: "ChangeGhost",
+			Args: []string{ v[1] },
+		})
+	}
+	menu = append(menu, MenuItem{
+		Type: "submenu",
+		Caption: "switch",
+		Valid: true,
+		List: l,
+	})
+	l = make([]MenuItem, 0, len(ghosts))
+	for _, v := range ghosts {
+		_, ok := running[v[1]]
+		l = append(l, MenuItem{
+			Type: "item",
+			Caption: v[0],
+			Valid: !ok,
+			Command: "SummonGhost",
+			Args: []string{ v[1] },
+		})
+	}
+	menu = append(menu, MenuItem{
+		Type: "submenu",
+		Caption: "call",
+		Valid: true,
+		List: l,
+	})
+	shells := make([][]string, 0, len(s.shiori.Shells))
+	for k, v := range s.shiori.Shells {
+		shells = append(shells, []string{ v.Descript["name"], k})
+	}
+	slices.SortFunc(shells, func(a []string, b []string) int {
+		result := cmp.Compare(a[0], b[0])
+		if result == 0 {
+			return cmp.Compare(a[1], b[1])
+		}
+		return result
+	})
+	l = make([]MenuItem, 0, len(shells))
+	for _, v := range shells {
+		l = append(l, MenuItem{
+			Type: "item",
+			Caption: v[0],
+			Valid: s.current_shell != v[1],
+			Command: "ChangeShell",
+			Args: []string{ v[1] },
+		})
+	}
+	menu = append(menu, MenuItem{
+		Type: "submenu",
+		Caption: "shell",
+		Valid: true,
+		List: l,
+	})
+	menu = append(menu, MenuItem{
+		Type: "dressup",
+		Caption: "costume",
+		Valid: true,
+		List: []MenuItem{},
+	})
+	balloons := s.parent.GetBalloons()
+	l = make([]MenuItem, 0, len(balloons))
+	for _, v := range balloons {
+		l = append(l, MenuItem{
+			Type: "item",
+			Caption: v[0],
+			Valid: s.current_balloon != v[1],
+			Command: "ChangeBalloon",
+			Args: []string{ v[1] },
+		})
+	}
+	menu = append(menu, MenuItem{
+		Type: "submenu",
+		Caption: "balloon",
+		Valid: true,
+		List: l,
+	})
+	menu = append(menu, MenuItem{
+		Type: "submenu",
+		Caption: "info",
+		Valid: true,
+		List: []MenuItem{
+			MenuItem{
+				Type: "item",
+				Caption: "ベースウェアについて",
+				Valid: true,
+				Command: "ShowBasewareVersion",
+			},
+		},
+	})
+	menu = append(menu, MenuItem{
+		Type: "item",
+		Caption: "close",
+		Valid: true,
+		Command: "CloseGhost",
+	})
+	menu = append(menu, MenuItem{
+		Type: "item",
+		Caption: "close all",
+		Valid: true,
+		Command: "CloseAllGhost",
+	})
+	bytes, err := json.Marshal(menu)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	s.ao.Request("NOTIFY", "NotifyMenuInfo", string(bytes))
+}
+
+func (s *Sakura) GhostName() string {
+	return s.shiori.Descript["name"]
+}
+
+func (s *Sakura) GhostPath() string {
+	return s.shiori.Path
+}
+
+func (s *Sakura) SakuraName() string {
+	return s.shiori.Descript["sakura.name"]
+}
+
+func (s *Sakura) LastScript() string {
+	return s.last_script
 }

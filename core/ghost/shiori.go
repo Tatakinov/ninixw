@@ -105,7 +105,11 @@ func (s shiori) Request(method string, command string, args ...string) (Response
 			Header: h,
 		}, true
 	} else {
-		return Response{}, false
+		return Response{
+			Method: "NOTIFY",
+			Protocol: "SHIORI/3.0",
+			Header: make(map[string]string),
+		}, true
 	}
 }
 
