@@ -7,6 +7,8 @@ import (
 	"net"
 	"strconv"
 	"strings"
+
+	"ninixw-core/utils"
 )
 
 type ISSTP interface {
@@ -103,7 +105,7 @@ func HandleSSTP(is ISSTP, server net.Listener) {
 			reader := bufio.NewReader(conn)
 			writer := bufio.NewWriter(conn)
 			for {
-				bytes, _, err := reader.ReadLine()
+				bytes, err := utils.ReadLine(reader)
 				if err != nil {
 					break
 				}
@@ -153,18 +155,11 @@ func parseHTTP(r *bufio.Reader, method string, path string, protocol Proto) (Htt
 	header := make(map[string]string)
 	content := ""
 	for {
-		buffer := make([]byte, 0)
-		for {
-			bytes, is_prefix, err := r.ReadLine()
-			if err != nil {
-				return HttpRequest{}, err
-			}
-			buffer = append(buffer, bytes...)
-			if !is_prefix {
-				break
-			}
+		bytes, err := utils.ReadLine(r)
+		if err != nil {
+			return HttpRequest{}, err
 		}
-		line := string(buffer)
+		line := string(bytes)
 		line = strings.TrimSpace(line)
 		if line == "" {
 			break
@@ -209,7 +204,7 @@ func (req HttpRequest) Protocol() Proto {
 
 func (req HttpRequest) Sstp() (SstpRequest, error) {
 	r := bufio.NewReader(strings.NewReader(req.Content))
-	bytes, _, err := r.ReadLine()
+	bytes, err := utils.ReadLine(r)
 	if err != nil {
 		return SstpRequest{}, err
 	}
@@ -237,18 +232,11 @@ func parseSSTP(r *bufio.Reader, method string, protocol Proto) (SstpRequest, err
 	reference := make([]string, 0)
 	ifghost := ""
 	for {
-		buffer := make([]byte, 0)
-		for {
-			bytes, is_prefix, err := r.ReadLine()
-			if err != nil {
-				return SstpRequest{}, err
-			}
-			buffer = append(buffer, bytes...)
-			if !is_prefix {
-				break
-			}
+		bytes, err := utils.ReadLine(r)
+		if err != nil {
+			return SstpRequest{}, err
 		}
-		line := string(buffer)
+		line := string(bytes)
 		line = strings.TrimSpace(line)
 		if line == "" {
 			break

@@ -1,12 +1,14 @@
 package baseware
 
 import (
+	"bufio"
 	"cmp"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"uuid"
 
@@ -14,6 +16,7 @@ import (
 	"ninixw-core/interfaces"
 	"ninixw-core/path"
 	"ninixw-core/sakura"
+	"ninixw-core/utils"
 	"ninixw-core/with_mutex"
 )
 
@@ -21,6 +24,7 @@ type Baseware struct {
 	ghosts with_mutex.WithMutex[string, ghost.Ghost]
 	balloons with_mutex.WithMutex[string, ghost.Balloon]
 	sakuras with_mutex.WithMutex[string, *sakura.Sakura]
+	preferences with_mutex.WithMutex[string, string]
 	wg sync.WaitGroup
 	channel chan string
 	uuids with_mutex.WithMutex[string, struct{}]
@@ -39,6 +43,7 @@ func NewBaseware() *Baseware {
 		ghosts: with_mutex.NewWithMutex[string, ghost.Ghost](),
 		balloons: with_mutex.NewWithMutex[string, ghost.Balloon](),
 		sakuras: with_mutex.NewWithMutex[string, *sakura.Sakura](),
+		preferences: with_mutex.NewWithMutex[string, string](),
 		wg: sync.WaitGroup{},
 		channel: make(chan string),
 		uuids: with_mutex.NewWithMutex[string, struct{}](),
@@ -46,6 +51,7 @@ func NewBaseware() *Baseware {
 }
 
 func (b *Baseware) Load() {
+	b.loadPreferences()
 	dirs := path.Dirs(path.GhostDir())
 	for _, dir := range dirs {
 		g, err := ghost.NewGhost(filepath.Join(path.GhostDir(), dir))
@@ -65,6 +71,52 @@ func (b *Baseware) Load() {
 		b.balloons.Lock(func(m map[string]ghost.Balloon) {
 			m[dir] = balloon
 		})
+	}
+}
+
+func (b *Baseware) loadPreferences() {
+	file, err := os.Open(filepath.Join(path.HomeDir(), "preferences.txt"))
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	r := bufio.NewReader(file)
+	p := make(map[string]string)
+	for {
+		bytes, err := utils.ReadLine(r)
+		if err != nil {
+			break
+		}
+		line := string(bytes)
+		line = strings.TrimRight(line, "\r\n")
+		s := strings.SplitN(line, "=", 2)
+		if len(s) < 2 {
+			continue
+		}
+		p[strings.TrimSpace(s[0])] = strings.TrimSpace(s[1])
+	}
+	b.preferences.Lock(func(m map[string]string) {
+		for k, v := range p {
+			m[k] = v
+		}
+	})
+}
+
+func (b *Baseware) savePreferences() {
+	p := make(map[string]string)
+	b.preferences.RLock(func(m map[string]string) {
+		for k, v := range m {
+			p[k] = v
+		}
+	})
+	s := make([]string, 0, len(p))
+	for k, v := range p {
+		s = append(s, fmt.Sprintf("%s=%s", k, v))
+	}
+	err := os.WriteFile(filepath.Join(path.HomeDir(), "preferences.txt"), []byte(strings.Join(s, "\r\n")), 0644)
+	if err != nil {
+		fmt.Println(err)
 	}
 }
 
@@ -88,6 +140,7 @@ func (b *Baseware) Run(ghost_name string) {
 		}
 	}
 	b.wg.Wait()
+	b.savePreferences()
 }
 
 func (b *Baseware) StartSakura(name string, reason string, from interfaces.ISakura) error {
@@ -260,4 +313,19 @@ func (b *Baseware) GetBalloon(balloon string) (ghost.Balloon, error) {
 		return ghost.Balloon{}, errors.New(fmt.Sprintf("balloon not found: %s", balloon))
 	}
 	return ba, nil
+}
+
+func (b *Baseware) GetPreferences(s string) (string, bool) {
+	ret := ""
+	ok := false
+	b.preferences.RLock(func(m map[string]string) {
+		ret, ok = m[s]
+	})
+	return ret, ok
+}
+
+func (b *Baseware) SetPreferences(k string, v string) {
+	b.preferences.Lock(func(m map[string]string) {
+		m[k] = v
+	})
 }

@@ -18,4 +18,6 @@ type IBaseware interface {
 	GetRunningGhosts() map[string]struct{}
 	GetBalloons() [][]string
 	GetBalloon(b string) (ghost.Balloon, error)
+	GetPreferences(s string) (string, bool)
+	SetPreferences(k string, v string)
 }
