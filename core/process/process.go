@@ -18,7 +18,6 @@ type Process struct {
 	alive chan struct{}
 	cmd *exec.Cmd
 	send chan Data
-	Recv chan string
 	cancel context.CancelFunc
 }
 
