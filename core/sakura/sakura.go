@@ -4,8 +4,9 @@ import (
 	"cmp"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -17,9 +18,11 @@ import (
 
 	"ninixw-core/ghost"
 	"ninixw-core/interfaces"
+	"ninixw-core/log"
 	"ninixw-core/path"
 	"ninixw-core/sakurascript"
 	"ninixw-core/sstp"
+	"ninixw-core/structs"
 	"ninixw-core/version"
 	"ninixw-core/with_mutex"
 )
@@ -56,13 +59,6 @@ type rectInfo struct {
 type directionInfo struct {
 	m sync.RWMutex
 	direction map[int]bool
-}
-
-type Event struct {
-	Method string
-	Option map[string]struct{}
-	Event string
-	Reference []string
 }
 
 type Sakura struct {
@@ -177,14 +173,14 @@ func (s *Sakura) fromAi(req sstp.SstpRequest) bool {
 func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 	req, err := r.Sstp()
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
 	}
 	switch req.Method {
 	case "NOTIFY", "SEND":
 		event, _ := req.Header["Event"]
 		if event != "" {
-			s.SendEvent(Event{ Method: "GET", Option: make(map[string]struct{}), Event: event, Reference: req.Reference })
+			s.SendEvent(structs.Event{ Method: "GET", Option: make(map[string]struct{}), Event: event, Reference: req.Reference })
 		} else {
 			// TODO ifghost
 			data, _ := req.Script[""]
@@ -220,27 +216,27 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 			}
 			side, err := strconv.Atoi(req.Reference[0])
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
 			}
 			x, err := strconv.Atoi(req.Reference[1])
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
 			}
 			y, err := strconv.Atoi(req.Reference[2])
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
 			}
 			w, err := strconv.Atoi(req.Reference[3])
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
 			}
 			h, err := strconv.Atoi(req.Reference[4])
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
 			}
 			s.rect.Lock(func(m map[rectKey]Rect) {
@@ -252,7 +248,7 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 			}
 			side, err := strconv.Atoi(req.Reference[0])
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
 			}
 			var ok bool
@@ -317,6 +313,47 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 			s.direction_info.m.Unlock()
 			s.ai.Request("NOTIFY", "SetDirection", strconv.Itoa(side), i_direction)
 			s.ai.Request("NOTIFY", "SetPosition", strconv.Itoa(side), strconv.Itoa(x - monitor.X), strconv.Itoa(y - monitor.Y), strconv.Itoa(monitor.X), strconv.Itoa(monitor.Y))
+		case "AnalyzeFileMagic":
+			if !s.fromAo(req) && !s.fromAi(req) {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			if len(req.Reference) <= 1 {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			mimes := make([]string, 0, len(req.Reference) - 1)
+			for _, f := range req.Reference[1:] {
+				file, err := os.Open(f)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+				defer file.Close()
+				bytes := make([]byte, 512)
+				n, err := file.Read(bytes)
+				if err != nil && err != io.EOF {
+					log.Println(err)
+					continue
+				}
+				mime := http.DetectContentType(bytes[:n])
+				mimes = append(mimes, mime)
+			}
+			s.SendEvent(structs.Event{
+				Method: "GET",
+				Option: make(map[string]struct{}),
+				Event: "OnFileDrop2",
+				Reference: []string{
+					strings.Join(req.Reference[1:], "\x01"),
+					req.Reference[0],
+					strings.Join(mimes, "\x01"),
+				},
+			})
+			for i, m := range mimes {
+				switch m {
+				case "application/zip":
+					s.parent.InstallNar(req.Reference[i + 1], s)
+				default:
+				}
+			}
 		case "ChangeGhost":
 			if !s.fromAo(req) {
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
@@ -324,12 +361,12 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 			if len(req.Reference) == 0 {
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
 			}
-			s.SendEvent(Event{
+			s.SendEvent(structs.Event{
 				Method: "GET",
 				Option: make(map[string]struct{}),
 				Event: "OnGhostChanging",
 				Reference: []string{ "user" },
-			}, Event{
+			}, structs.Event{
 				Method: "GET",
 				Option: make(map[string]struct{}),
 				Event: "OnClose",
@@ -338,7 +375,7 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 			<- s.quit
 			err := s.parent.StartSakura(req.Reference[0], "change", s)
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 			}
 		case "SummonGhost":
 			if !s.fromAo(req) {
@@ -349,12 +386,27 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 			}
 			err := s.parent.StartSakura(req.Reference[0], "call", s)
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 			}
 		case "CloseGhost":
-			s.SendEvent(Event{ Method: "GET", Option: make(map[string]struct{}), Event: "OnClose", Reference: []string{ "user" } })
+			s.SendEvent(structs.Event{
+				Method: "GET",
+				Option: make(map[string]struct{}),
+				Event: "OnClose",
+				Reference: []string{ "user" },
+			})
 		case "CloseAllGhost":
-			s.SendEvent(Event{ Method: "GET", Option: make(map[string]struct{}), Event: "OnCloseAll", Reference: []string{ "user" } })
+			s.SendEvent(structs.Event{
+				Method: "GET",
+				Option: make(map[string]struct{}),
+				Event: "OnCloseAll",
+				Reference: []string{ "user" },
+			}, structs.Event{
+				Method: "GET",
+				Option: make(map[string]struct{}),
+				Event: "OnClose",
+				Reference: []string{ "user" },
+			})
 		}
 	}
 	return sstp.NewResponse(204, "No Content", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
@@ -364,21 +416,21 @@ func (s *Sakura) Stop() {
 	close(s.quit)
 	err := s.shiori.Stop()
 	if err != nil {
-		fmt.Println("shiori exited at", err)
+		log.Println("shiori exited at", err)
 	} else {
-		fmt.Println("shiori exited successfully")
+		log.Println("shiori exited successfully")
 	}
 	err = s.ao.Stop()
 	if err != nil {
-		fmt.Println("ao exited at", err)
+		log.Println("ao exited at", err)
 	} else {
-		fmt.Println("ao exited successfully")
+		log.Println("ao exited successfully")
 	}
 	err = s.ai.Stop()
 	if err != nil {
-		fmt.Println("ai exited at", err)
+		log.Println("ai exited at", err)
 	} else {
-		fmt.Println("ai exited successfully")
+		log.Println("ai exited successfully")
 	}
 }
 
@@ -440,7 +492,7 @@ func (s *Sakura) MainLoop() {
 				}
 			case <- onsecondchange_ticker.C:
 				if len(asts) == 0 {
-					s.SendEvent(Event{ Method: "GET", Option: make(map[string]struct{}), Event: "OnSecondChange", Reference: []string{ "", "0", "0", "1" } })
+					s.SendEvent(structs.Event{ Method: "GET", Option: make(map[string]struct{}), Event: "OnSecondChange", Reference: []string{ "", "0", "0", "1" } })
 				}
 			case <- timeout_ch:
 				timeout_ch = make(chan time.Time)
@@ -449,7 +501,7 @@ func (s *Sakura) MainLoop() {
 			case <- restore_ch:
 				restore_ch = make(chan time.Time)
 				// TODO get surface id
-				s.SendEvent(Event{ Method: "GET", Option: make(map[string]struct{}), Event: "OnSurfaceRestore", Reference: []string{} })
+				s.SendEvent(structs.Event{ Method: "GET", Option: make(map[string]struct{}), Event: "OnSurfaceRestore", Reference: []string{} })
 			case <- s.wait_timer.C:
 				s.paused = false
 				ch <- struct{}{}
@@ -463,7 +515,7 @@ func (s *Sakura) MainLoop() {
 				for {
 					tmp, err := s.interpretScript(asts)
 					if err != nil {
-						fmt.Println(err)
+						log.Println(err)
 					}
 					asts = tmp
 					if !s.quick_section || s.paused || len(asts) == 0 {
@@ -526,7 +578,7 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 					if ast.Args[0] == "notify" {
 						method = "NOTIFY"
 					}
-					s.SendEvent(Event{ Method: method, Option: make(map[string]struct{}), Event: ast.Args[1], Reference: ast.Args[2:] })
+					s.SendEvent(structs.Event{ Method: method, Option: make(map[string]struct{}), Event: ast.Args[1], Reference: ast.Args[2:] })
 				case "timerraise", "timernotify":
 					if len(ast.Args) < 4 {
 						return asts[index:], errors.New(`invalid args size in \![raise/notify]`)
@@ -572,7 +624,7 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 								case <- s.quit:
 									return
 								case <- ch:
-									s.SendEvent(Event{ Method: method, Option: make(map[string]struct{}), Event: ast.Args[3], Reference: ast.Args[4:] })
+									s.SendEvent(structs.Event{ Method: method, Option: make(map[string]struct{}), Event: ast.Args[3], Reference: ast.Args[4:] })
 									if !loop {
 										s.timer_ch.Lock(func(m map[string]func()) {
 											_, ok := m[ast.Args[3]]
@@ -744,7 +796,7 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 					p = filepath.Join(s.shiori.Path, p)
 				}
 				if !strings.HasPrefix(p, path.HomeDir()) {
-					fmt.Println("ninixw", "directory traversal?", p)
+					log.Println("ninixw", "directory traversal?", p)
 				}
 				i := 1
 				x := "0"
@@ -896,16 +948,22 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 	return asts[index:], nil
 }
 
-func (s *Sakura) SendEvent(event ...Event) {
+func (s *Sakura) SendEvent(event ...structs.Event) {
 	if len(event) == 0 {
 		return
 	}
-	var e Event
+	select {
+	case <- s.quit:
+		return
+	default:
+		// nop
+	}
+	var e structs.Event
 	v := ""
 	for _, e = range event {
 		res, ok := s.shiori.Request(e.Method, e.Event, e.Reference...)
 		if !ok {
-			fmt.Println("something wrong")
+			log.Println("something wrong")
 			return
 		}
 		v, ok = res.Header["Value"]
@@ -920,7 +978,7 @@ func (s *Sakura) SendEvent(event ...Event) {
 		} else {
 			res, ok := s.shiori.Request("GET", "OnTranslate", v, "", e.Event, strings.Join(e.Reference, "\x01"))
 			if !ok {
-				fmt.Println("something wrong in OnTranslate")
+				log.Println("something wrong in OnTranslate")
 			}
 			t, ok := res.Header["Value"]
 			if ok {
@@ -946,7 +1004,7 @@ func (s *Sakura) SendEvent(event ...Event) {
 func (s *Sakura) openMenu(from string) {
 	n, err := strconv.Atoi(from)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 	menu := make([]MenuItem, 0)
@@ -1154,7 +1212,7 @@ func (s *Sakura) openMenu(from string) {
 	})
 	bytes, err := json.Marshal(menu)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 	s.ao.Request("NOTIFY", "NotifyMenuInfo", string(bytes))

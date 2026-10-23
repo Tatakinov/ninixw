@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"net"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"ninixw-core/baseware"
+	"ninixw-core/log"
 	"ninixw-core/path"
 )
 
@@ -22,7 +22,7 @@ func main() {
 	shm_bytes, err := exec.Command(shm_exe, "-g").Output()
 	create_new := false
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		create_new = true
 	}
 	shm_output := strings.TrimRight(string(shm_bytes), "\r\n")
@@ -44,7 +44,7 @@ func main() {
 	shm_cmd := exec.CommandContext(ctx, shm_exe, args...)
 	shm_write, err := shm_cmd.StdinPipe()
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 	shm_cmd.Start()

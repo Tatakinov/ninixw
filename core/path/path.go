@@ -42,6 +42,10 @@ func SockDir() string {
 	return filepath.Join(HomeDir(), "sock")
 }
 
+func TmpDir() string {
+	return filepath.Join(HomeDir(), "tmp")
+}
+
 func Dirs(dir string) []string {
 	entries, err := os.ReadDir(dir)
 	if err != nil {

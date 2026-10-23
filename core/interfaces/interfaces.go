@@ -2,9 +2,11 @@ package interfaces
 
 import (
 	"ninixw-core/ghost"
+	"ninixw-core/structs"
 )
 
 type ISakura interface {
+	SendEvent(event ...structs.Event)
 	GhostPath() string
 	GhostName() string
 	SakuraName() string
@@ -20,4 +22,5 @@ type IBaseware interface {
 	GetBalloon(b string) (ghost.Balloon, error)
 	GetPreferences(s string) (string, bool)
 	SetPreferences(k string, v string)
+	InstallNar(f string, s ISakura)
 }

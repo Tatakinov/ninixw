@@ -14,8 +14,10 @@ import (
 
 	"ninixw-core/ghost"
 	"ninixw-core/interfaces"
+	"ninixw-core/log"
 	"ninixw-core/path"
 	"ninixw-core/sakura"
+	"ninixw-core/structs"
 	"ninixw-core/utils"
 	"ninixw-core/with_mutex"
 )
@@ -116,7 +118,7 @@ func (b *Baseware) savePreferences() {
 	}
 	err := os.WriteFile(filepath.Join(path.HomeDir(), "preferences.txt"), []byte(strings.Join(s, "\r\n")), 0644)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 }
 
@@ -136,7 +138,7 @@ func (b *Baseware) Run(ghost_name string) {
 		}
 		err := b.StartSakura(ghost_name, "system", &sakura.Sakura{})
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 		}
 	}
 	b.wg.Wait()
@@ -214,31 +216,31 @@ func (b *Baseware) StartSakura(name string, reason string, from interfaces.ISaku
 		defer b.wg.Done()
 		switch reason {
 		case "system":
-			instance.SendEvent(sakura.Event{
+			instance.SendEvent(structs.Event{
 				Method: "GET",
 				Option: make(map[string]struct{}),
 				Event: "OnBoot",
 				Reference: []string{ g.Shells[s].Descript["name"] },
 			})
 		case "change":
-			instance.SendEvent(sakura.Event{
+			instance.SendEvent(structs.Event{
 				Method: "GET",
 				Option: make(map[string]struct{}),
 				Event: "OnGhostChanged",
 				Reference: []string{ from.SakuraName(), from.LastScript(), from.GhostName(), from.GhostPath() },
-			}, sakura.Event{
+			}, structs.Event{
 				Method: "GET",
 				Option: make(map[string]struct{}),
 				Event: "OnBoot",
 				Reference: []string{ g.Shells[s].Descript["name"] },
 			})
 		case "call":
-			instance.SendEvent(sakura.Event{
+			instance.SendEvent(structs.Event{
 				Method: "GET",
 				Option: make(map[string]struct{}),
 				Event: "OnGhostCalled",
 				Reference: []string{ from.SakuraName(), from.LastScript(), from.GhostName(), from.GhostPath() },
-			}, sakura.Event{
+			}, structs.Event{
 				Method: "GET",
 				Option: make(map[string]struct{}),
 				Event: "OnBoot",
