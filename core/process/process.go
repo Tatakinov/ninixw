@@ -6,6 +6,8 @@ import (
 	"io"
 	"os/exec"
 	"time"
+
+	"ninixw-core/log"
 )
 
 type Data struct {
@@ -70,6 +72,7 @@ func NewProcess(name string, args ...string) (Process, error) {
 				if err == io.EOF {
 					break
 				}
+				log.Println(err)
 				return
 			} else if n == 4 {
 				length := binary.LittleEndian.Uint32(buf)
@@ -79,6 +82,7 @@ func NewProcess(name string, args ...string) (Process, error) {
 					n, err := r.Read(buf[total:])
 					total += n
 					if err != nil {
+						log.Println(err)
 						return
 					} else if uint32(total) < length {
 						continue
