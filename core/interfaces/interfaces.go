@@ -23,4 +23,6 @@ type IBaseware interface {
 	GetPreferences(s string) (string, bool)
 	SetPreferences(k string, v string)
 	InstallNar(f string, s ISakura)
+	OpenScriptLog()
+	AppendScriptLog(kind string, data structs.LogData)
 }

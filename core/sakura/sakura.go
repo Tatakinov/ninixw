@@ -186,6 +186,12 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 			data, _ := req.Script[""]
 			if data != "" {
 				s.script_ch <- script{ Data: data, Embed: false }
+				s.parent.AppendScriptLog("info", structs.LogData{
+					Time: time.Now(),
+					Ghost: s.shiori.Descript["name"],
+					Status: make(map[string]struct{}),
+					Script: data,
+				})
 			}
 		}
 	case "EXECUTE":
@@ -354,6 +360,11 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 				default:
 				}
 			}
+		case "OpenScriptLog":
+			if !s.fromAo(req) {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			s.parent.OpenScriptLog()
 		case "ChangeGhost":
 			if !s.fromAo(req) {
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
@@ -417,20 +428,14 @@ func (s *Sakura) Stop() {
 	err := s.shiori.Stop()
 	if err != nil {
 		log.Println("shiori exited at", err)
-	} else {
-		log.Println("shiori exited successfully")
 	}
 	err = s.ao.Stop()
 	if err != nil {
 		log.Println("ao exited at", err)
-	} else {
-		log.Println("ao exited successfully")
 	}
 	err = s.ai.Stop()
 	if err != nil {
 		log.Println("ai exited at", err)
-	} else {
-		log.Println("ai exited successfully")
 	}
 }
 
@@ -975,6 +980,12 @@ func (s *Sakura) SendEvent(event ...structs.Event) {
 		if _, ok := e.Option["notranslate"]; ok {
 			_, ok = e.Option["embed"]
 			s.script_ch <- script{ Data: v, Embed: ok }
+			s.parent.AppendScriptLog("info", structs.LogData{
+				Time: time.Now(),
+				Ghost: s.shiori.Descript["name"],
+				Status: e.Option,
+				Script: v,
+			})
 		} else {
 			res, ok := s.shiori.Request("GET", "OnTranslate", v, "", e.Event, strings.Join(e.Reference, "\x01"))
 			if !ok {
@@ -984,9 +995,21 @@ func (s *Sakura) SendEvent(event ...structs.Event) {
 			if ok {
 				_, ok = e.Option["embed"]
 				s.script_ch <- script{ Data: t, Embed: ok }
+				s.parent.AppendScriptLog("info", structs.LogData{
+					Time: time.Now(),
+					Ghost: s.shiori.Descript["name"],
+					Status: e.Option,
+					Script: t,
+				})
 			} else {
 				_, ok = e.Option["embed"]
 				s.script_ch <- script{ Data: v, Embed: ok }
+				s.parent.AppendScriptLog("info", structs.LogData{
+					Time: time.Now(),
+					Ghost: s.shiori.Descript["name"],
+					Status: e.Option,
+					Script: v,
+				})
 			}
 		}
 	}

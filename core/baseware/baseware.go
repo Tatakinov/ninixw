@@ -30,6 +30,7 @@ type Baseware struct {
 	wg sync.WaitGroup
 	channel chan string
 	uuids with_mutex.WithMutex[string, struct{}]
+	scriptlog *scriptlog
 }
 
 func NewBaseware() *Baseware {
@@ -49,6 +50,7 @@ func NewBaseware() *Baseware {
 		wg: sync.WaitGroup{},
 		channel: make(chan string),
 		uuids: with_mutex.NewWithMutex[string, struct{}](),
+		scriptlog: newScriptlog(),
 	}
 }
 
@@ -330,4 +332,22 @@ func (b *Baseware) SetPreferences(k string, v string) {
 	b.preferences.Lock(func(m map[string]string) {
 		m[k] = v
 	})
+}
+
+func (b *Baseware) OpenScriptLog() {
+	err := b.scriptlog.Exec()
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func (b *Baseware) AppendScriptLog(_ string, data structs.LogData) {
+	s := make([]string, 0, len(data.Status))
+	for k, _ := range data.Status {
+		s = append(s, k)
+	}
+	slices.SortFunc(s, func(a string, b string) int {
+		return cmp.Compare(a, b)
+	})
+	b.scriptlog.Append(fmt.Sprintf("%s\x01%s\x01%s\x01%s", data.Time.Format("2006-01-02 15:04:05"), data.Ghost, strings.Join(s, ","), data.Script))
 }
