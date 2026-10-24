@@ -81,9 +81,9 @@ class TableColumn : public Fl_Table_Row {
             end();
         }
         void append(const Data &data) {
-            data_.push_back(data);
+            data_.insert(data_.begin(), data);
             while (data_.size() > 50) {
-                data_.erase(data_.begin());
+                data_.pop_back();
             }
             rows(data_.size());
             redraw();
