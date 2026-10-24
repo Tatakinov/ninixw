@@ -1,4 +1,7 @@
+#include <iostream>
+#include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <FL/Fl.H>
@@ -22,11 +25,9 @@ struct Data {
     std::string script;
 };
 
-namespace {
-    std::vector<Data> data;
-}
-
 class TableColumn : public Fl_Table_Row {
+    private:
+        std::vector<Data> data_;
     protected:
         void draw_cell(TableContext context, int r, int c, int x, int y, int w, int h) override {
             switch (context) {
@@ -46,19 +47,19 @@ class TableColumn : public Fl_Table_Row {
                         fl_draw_box(FL_FLAT_BOX, x, y, w, h, FL_WHITE);
                         fl_color(FL_BLACK);
                     }
-                    if (r < data.size()) {
+                    if (r < data_.size()) {
                         switch (c) {
                             case 0:
-                                fl_draw(data[r].time.c_str(), x, y, w, h, FL_ALIGN_LEFT);
+                                fl_draw(data_[r].time.c_str(), x, y, w, h, FL_ALIGN_LEFT);
                                 break;
                             case 1:
-                                fl_draw(data[r].ghost.c_str(), x, y, w, h, FL_ALIGN_LEFT);
+                                fl_draw(data_[r].ghost.c_str(), x, y, w, h, FL_ALIGN_LEFT);
                                 break;
                             case 2:
-                                fl_draw(data[r].status.c_str(), x, y, w, h, FL_ALIGN_LEFT);
+                                fl_draw(data_[r].status.c_str(), x, y, w, h, FL_ALIGN_LEFT);
                                 break;
                             case 3:
-                                fl_draw(data[r].script.c_str(), x, y, w, h, FL_ALIGN_LEFT);
+                                fl_draw(data_[r].script.c_str(), x, y, w, h, FL_ALIGN_LEFT);
                                 break;
                             default:
                                 // nop
@@ -71,7 +72,7 @@ class TableColumn : public Fl_Table_Row {
         }
     public:
         TableColumn(int x, int y, int w, int h) : Fl_Table_Row(x, y, w, h) {
-            rows(50);
+            rows(0);
             cols(4);
             col_header(1);
             row_height_all(25);
@@ -79,16 +80,48 @@ class TableColumn : public Fl_Table_Row {
             type(SELECT_SINGLE);
             end();
         }
+        void append(const Data &data) {
+            data_.push_back(data);
+            while (data_.size() > 50) {
+                data_.erase(data_.begin());
+            }
+            rows(data_.size());
+            redraw();
+        }
 };
 
 int main() {
-    data = {
-        {"01", "G1", "", "\\0test\\e"},
-        {"02", "G2", "embed", "\\0test2aaaaaaaaaaaaaaaaaaaaa\\e"},
-    };
     Fl_Double_Window w(400, 200, "Script Log");
     TableColumn t(20, 20, 360, 160);
     w.end();
+    auto th = std::thread([&]() {
+        std::string line;
+        while (std::getline(std::cin, line)) {
+            Data data;
+            {
+                std::string tmp;
+                std::istringstream iss(line);
+                char delim = '\x01';
+                std::getline(iss, tmp, delim);
+                data.time = tmp;
+                std::getline(iss, tmp, delim);
+                data.ghost = tmp;
+                std::getline(iss, tmp, delim);
+                data.status = tmp;
+                std::getline(iss, tmp, '\0');
+                data.script = tmp;
+            }
+            Fl::lock();
+            t.append(data);
+            Fl::unlock();
+            Fl::awake();
+        }
+        Fl::lock();
+        w.hide();
+        Fl::unlock();
+        Fl::awake();
+    });
     w.show();
-    return Fl::run();
+    Fl::run();
+    th.join();
 }
