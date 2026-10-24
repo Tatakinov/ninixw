@@ -199,7 +199,8 @@ func install(root string, s interfaces.ISakura, in bool) (string, string, string
 		if with_balloon {
 			dst := filepath.Join(path.BalloonDir(), b_dir)
 			if confirm(dst) {
-				err = os.Rename(filepath.Join(root, b_src_dir), dst)
+				src := os.DirFS(filepath.Join(root, b_src_dir))
+				err = os.CopyFS(dst, src)
 				if err != nil {
 					log.Println(err)
 					return "", "", "", err
@@ -211,7 +212,8 @@ func install(root string, s interfaces.ISakura, in bool) (string, string, string
 		dir := m["directory"]
 		dst := filepath.Join(path.GhostDir(), dir)
 		if confirm(dst) {
-			err = os.Rename(root, dst)
+			src := os.DirFS(root)
+			err = os.CopyFS(dst, src)
 			if err != nil {
 				log.Println(err)
 				return "", "", "", err
