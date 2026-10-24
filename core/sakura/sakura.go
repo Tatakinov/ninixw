@@ -365,6 +365,22 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
 			}
 			s.parent.OpenScriptLog()
+		case "UpdateGhost":
+			if !s.fromAo(req) {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			homeurl := ""
+			res, ok := s.shiori.Request("GET", "homeurl")
+			if ok {
+				homeurl = res.Header["Value"]
+			}
+			if homeurl == "" {
+				homeurl = s.shiori.Descript["homeurl"]
+			}
+			if strings.HasPrefix(homeurl, "http://") || strings.HasPrefix(homeurl, "https://") {
+				root := filepath.Dir(filepath.Dir(s.shiori.Path))
+				s.parent.UpdateGhost(homeurl, root, s)
+			}
 		case "ChangeGhost":
 			if !s.fromAo(req) {
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
@@ -1079,10 +1095,20 @@ func (s *Sakura) openMenu(from string) {
 		Valid: true,
 		List: submenu,
 	})
+	homeurl := s.shiori.Descript["homeurl"]
+	if homeurl == "" {
+		res, ok := s.shiori.Request("GET", "homeurl")
+		if ok {
+			homeurl = res.Header["Value"]
+		}
+	}
+	if !strings.HasPrefix(homeurl, "http://") && strings.HasPrefix(homeurl, "https://") {
+		homeurl = ""
+	}
 	menu = append(menu, MenuItem{
 		Type: "item",
 		Caption: "update",
-		Valid: true,
+		Valid: homeurl != "",
 		Command: "UpdateGhost",
 	})
 	menu = append(menu, MenuItem{
