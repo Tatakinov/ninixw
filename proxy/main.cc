@@ -22,7 +22,7 @@ namespace {
 #if defined(_WIN32) || defined(WIN32)
         return std::make_unique<Library>(argc, argv);
 #else
-        if (argc > 1 && std::string(argv[1]) == "shiori.dll") {
+        if (argc > 0 && std::string(argv[0]) == "shiori.dll") {
             return std::make_unique<Kawari8Library>(argc, argv);
         }
         else {
