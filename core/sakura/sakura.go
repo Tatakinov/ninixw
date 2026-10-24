@@ -370,8 +370,10 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
 			}
 			homeurl := ""
-			res, ok := s.shiori.Request("GET", "homeurl")
-			if ok {
+			res, err := s.shiori.Request("GET", "homeurl")
+			if err != nil {
+				log.Println(err)
+			} else {
 				homeurl = res.Header["Value"]
 			}
 			if homeurl == "" {
@@ -982,13 +984,14 @@ func (s *Sakura) SendEvent(event ...structs.Event) {
 	var e structs.Event
 	v := ""
 	for _, e = range event {
-		res, ok := s.shiori.Request(e.Method, e.Event, e.Reference...)
-		if !ok {
-			log.Println("something wrong")
+		res, err := s.shiori.Request(e.Method, e.Event, e.Reference...)
+		if err != nil {
+			log.Println(err)
 			return
 		}
-		v, ok = res.Header["Value"]
+		tmp, ok := res.Header["Value"]
 		if ok {
+			v = tmp
 			break
 		}
 	}
@@ -1003,9 +1006,9 @@ func (s *Sakura) SendEvent(event ...structs.Event) {
 				Script: v,
 			})
 		} else {
-			res, ok := s.shiori.Request("GET", "OnTranslate", v, "", e.Event, strings.Join(e.Reference, "\x01"))
-			if !ok {
-				log.Println("something wrong in OnTranslate")
+			res, err := s.shiori.Request("GET", "OnTranslate", v, "", e.Event, strings.Join(e.Reference, "\x01"))
+			if err != nil {
+				log.Println(err)
 			}
 			t, ok := res.Header["Value"]
 			if ok {
@@ -1048,8 +1051,9 @@ func (s *Sakura) openMenu(from string) {
 	}
 	menu := make([]MenuItem, 0)
 	side := toSide(n)
-	res, ok := s.shiori.Request("GET", side + ".portalsites")
-	if !ok {
+	res, err := s.shiori.Request("GET", side + ".portalsites")
+	if err != nil {
+		log.Println(err)
 		return
 	}
 	submenu := make([]MenuItem, 0)
@@ -1071,8 +1075,9 @@ func (s *Sakura) openMenu(from string) {
 		Caption: "portal",
 		List: submenu,
 	})
-	res, ok = s.shiori.Request("GET", side + ".recommendsites")
-	if !ok {
+	res, err = s.shiori.Request("GET", side + ".recommendsites")
+	if err != nil {
+		log.Println(err)
 		return
 	}
 	submenu = make([]MenuItem, 0)
@@ -1097,8 +1102,10 @@ func (s *Sakura) openMenu(from string) {
 	})
 	homeurl := s.shiori.Descript["homeurl"]
 	if homeurl == "" {
-		res, ok := s.shiori.Request("GET", "homeurl")
-		if ok {
+		res, err := s.shiori.Request("GET", "homeurl")
+		if err != nil {
+			log.Println(err)
+		} else {
 			homeurl = res.Header["Value"]
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"golang.org/x/text/encoding/japanese"
@@ -24,15 +25,16 @@ type shiori struct {
 }
 
 type Response struct {
-	Method string
 	Protocol string
+	Code int
+	Message string
 	Header map[string]string
 }
 
 func newShiori(ghost ghost.Ghost) (shiori, error) {
 	lib := ghost.Descript["shiori"]
 	if lib == "" {
-		return shiori{}, errors.New("shiori not found")
+		lib = "shiori.dll"
 	}
 	root := filepath.Join(path.GhostDir(), ghost.Key, "ghost", "master")
 	info := getShioriFfiInfo(lib)
@@ -58,7 +60,7 @@ func newShiori(ghost ghost.Ghost) (shiori, error) {
 	return shiori{}, errors.New("shiori not found")
 }
 
-func (s shiori) Request(method string, command string, args ...string) (Response, bool) {
+func (s shiori) Request(method string, command string, args ...string) (Response, error) {
 	req := make([]string, 0, len(args) + 5)
 	charset := "UTF-8"
 	if s.charset != "" {
@@ -83,32 +85,36 @@ func (s shiori) Request(method string, command string, args ...string) (Response
 		r = tmp
 	}
 	ch := make(chan string, 1)
-	s.process.Send(method == "GET", ch, r)
+	s.process.Send(method == "GET" || s.charset == "", ch, r)
 	if method == "GET" || s.charset == "" {
 		data, ok := <- ch
 		if !ok {
-			return Response{}, false
+			return Response{}, errors.New("channel closed")
 		}
 		iss := strings.NewReader(data)
 		reader := bufio.NewReader(iss)
 		bytes, err := utils.ReadLine(reader)
 		if err != nil {
-			return Response{}, false
+			return Response{}, err
 		}
 		line := string(bytes)
 		line = strings.TrimRight(line, "\r\n")
-		slice := strings.SplitN(line, " ", 2)
-		if len(slice) < 2 {
-			return Response{}, false
+		slice := strings.SplitN(line, " ", 3)
+		if len(slice) < 3 {
+			return Response{}, errors.New("invalid shiori status line")
 		}
-		m := slice[0]
-		p := slice[1]
+		p := slice[0]
+		c, err := strconv.Atoi(slice[1])
+		if err != nil {
+			return Response{}, err
+		}
+		m := slice[2]
 		h := make(map[string]string)
 		for {
 			bytes, err = utils.ReadLine(reader)
 			if err != nil {
 				log.Println(err)
-				return Response{}, false
+				return Response{}, err
 			}
 			line = string(bytes)
 			line = strings.TrimRight(line, "\r\n")
@@ -117,7 +123,7 @@ func (s shiori) Request(method string, command string, args ...string) (Response
 			}
 			slice = strings.SplitN(line, ":", 2)
 			if len(slice) != 2 {
-				return Response{}, false
+				return Response{}, errors.New("invalid shiori header")
 			}
 			key := strings.TrimSpace(slice[0])
 			value := strings.TrimSpace(slice[1])
@@ -132,16 +138,18 @@ func (s shiori) Request(method string, command string, args ...string) (Response
 			}
 		}
 		return Response {
-			Method: m,
 			Protocol: p,
+			Code: c,
+			Message: m,
 			Header: h,
-		}, true
+		}, nil
 	} else {
 		return Response{
-			Method: "NOTIFY",
 			Protocol: "SHIORI/3.0",
+			Code: 204,
+			Message: "No Content",
 			Header: make(map[string]string),
-		}, true
+		}, nil
 	}
 }
 
