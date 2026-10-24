@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -42,7 +41,7 @@ func newShiori(ghost ghost.Ghost) (shiori, error) {
 	args = append(args, "--run", lib, root)
 	args = append(args, info...)
 	s := []string{
-		os.Getenv("NINIXW_PROXY_PATH"),
+		path.ProxyDir(),
 		path.ExecutableDir(),
 	}
 	for _, p := range s {

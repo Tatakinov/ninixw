@@ -26,6 +26,10 @@ func ShmDir() string {
 	return filepath.Join(ExecutableDir(), "internal", "shm")
 }
 
+func GuiDir() string {
+	return filepath.Join(ExecutableDir(), "internal", "gui")
+}
+
 func Lib(lib string, dir string) string {
 	return filepath.Join(dir, lib)
 }
