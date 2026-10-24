@@ -10,6 +10,7 @@
 #include <FL/fl_draw.H>
 
 namespace {
+    constexpr int kMinimumWidth = 60;
     const std::vector<std::string> header = {
         "Time",
         "Ghost",
@@ -76,7 +77,7 @@ class TableColumn : public Fl_Table_Row {
             cols(4);
             col_header(1);
             row_height_all(25);
-            col_width_all(100);
+            col_width_all(kMinimumWidth);
             type(SELECT_SINGLE);
             end();
         }
@@ -86,11 +87,51 @@ class TableColumn : public Fl_Table_Row {
                 data_.pop_back();
             }
             rows(data_.size());
+            int w_time, w_ghost, w_status, w_script;
+            w_time = w_ghost = w_status = w_script = kMinimumWidth;
+            fl_font(FL_HELVETICA, FL_NORMAL_SIZE);
+            for (const auto &d : data_) {
+                {
+                    int w = 0, _ = 0;
+                    fl_measure(d.time.c_str(), w, _);
+                    if (w_time < w) {
+                        w_time = w;
+                    }
+                }
+                {
+                    int w = 0, _ = 0;
+                    fl_measure(d.ghost.c_str(), w, _);
+                    if (w_ghost < w) {
+                        w_ghost = w;
+                    }
+                }
+                {
+                    int w = 0, _ = 0;
+                    fl_measure(d.status.c_str(), w, _);
+                    if (w_status < w) {
+                        w_status = w;
+                    }
+                }
+                {
+                    int w = 0, _ = 0;
+                    fl_measure(d.script.c_str(), w, _);
+                    if (w_script < w) {
+                        w_script = w;
+                    }
+                }
+            }
+            col_width(0, w_time);
+            col_width(1, w_ghost);
+            col_width(2, w_status);
+            col_width(3, w_script);
             redraw();
         }
 };
 
 int main() {
+    if (Fl::lock() != 0) {
+        return 1;
+    }
     Fl_Double_Window w(400, 200, "Script Log");
     TableColumn t(20, 20, 360, 160);
     w.end();
