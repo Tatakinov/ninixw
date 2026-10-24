@@ -216,6 +216,12 @@ func (b *Baseware) StartSakura(name string, reason string, from interfaces.ISaku
 	b.wg.Add(1)
 	go func() {
 		defer b.wg.Done()
+		instance.SendEvent(structs.Event{
+			Method: "NOTIFY",
+			Option: make(map[string]struct{}),
+			Event: "OnInitialize",
+			Reference: []string{ },
+		})
 		switch reason {
 		case "system":
 			instance.SendEvent(structs.Event{
