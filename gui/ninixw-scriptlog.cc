@@ -132,6 +132,7 @@ int main() {
     if (Fl::lock() != 0) {
         return 1;
     }
+    int ret = -1;
     Fl_Double_Window w(400, 200, "Script Log");
     TableColumn t(20, 20, 360, 160);
     w.end();
@@ -152,17 +153,23 @@ int main() {
                 std::getline(iss, tmp, '\0');
                 data.script = tmp;
             }
+            if (ret == -1) {
+                Fl::lock();
+                t.append(data);
+                Fl::unlock();
+                Fl::awake();
+            }
+        }
+        if (ret == -1) {
             Fl::lock();
-            t.append(data);
+            w.hide();
             Fl::unlock();
             Fl::awake();
         }
-        Fl::lock();
-        w.hide();
-        Fl::unlock();
-        Fl::awake();
     });
     w.show();
-    Fl::run();
+    ret = Fl::run();
+    std::cout << "ok" << std::endl;
     th.join();
+    return 0;
 }

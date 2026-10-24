@@ -1,9 +1,9 @@
 package baseware
 
 import (
+	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"os/exec"
 	"path/filepath"
 	"sync"
@@ -63,7 +63,8 @@ func (s *scriptlog) Exec() error {
 	go func() {
 		defer s.Stop()
 		defer r.Close()
-		io.ReadAll(r)
+		reader := bufio.NewReader(r)
+		reader.ReadLine()
 	}()
 	err = s.cmd.Start()
 	if err != nil {
