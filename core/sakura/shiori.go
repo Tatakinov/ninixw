@@ -37,6 +37,7 @@ func newShiori(ghost ghost.Ghost) (shiori, error) {
 		lib = "shiori.dll"
 	}
 	root := filepath.Join(path.GhostDir(), ghost.Key, "ghost", "master")
+	root = path.AppendDirSeparator(root)
 	info := getShioriFfiInfo(lib)
 	lib = path.Lib(lib, root)
 	args := make([]string, 0, len(info) + 2)
