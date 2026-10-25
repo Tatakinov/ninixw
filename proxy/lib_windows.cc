@@ -32,6 +32,15 @@ Library::Library(int argc, char *argv[]) : valid_(false), loaded_(false), module
     valid_ = true;
 }
 
+Library::~Library() {
+    if (loaded_) {
+        unload();
+    }
+    if (valid_) {
+        FreeLibrary(module_);
+    }
+}
+
 bool Library::load() {
     if (!valid_) {
         std::cerr << "invalid library" << std::endl;

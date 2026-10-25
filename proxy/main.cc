@@ -11,6 +11,7 @@
 
 #else
 
+#include "lib_pasta_others.h"
 #include "lib_kawari8_others.h"
 
 #endif // WIN32
@@ -22,7 +23,10 @@ namespace {
 #if defined(_WIN32) || defined(WIN32)
         return std::make_unique<Library>(argc, argv);
 #else
-        if (argc > 0 && std::string(argv[0]) == "shiori.dll") {
+        if (argc > 0 && std::string(argv[0]) == "pasta.dll") {
+            return std::make_unique<PastaLibrary>(argc, argv);
+        }
+        else if (argc > 0 && std::string(argv[0]) == "shiori.dll") {
             return std::make_unique<Kawari8Library>(argc, argv);
         }
         else {

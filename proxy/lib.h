@@ -48,11 +48,7 @@ class Library {
 #endif // !WIN32
     public:
         Library(int argc, char *argv[]);
-        virtual ~Library() {
-            if (loaded_) {
-                unload();
-            }
-        }
+        virtual ~Library();
 
         virtual bool load();
         virtual std::string request(const std::string &req);

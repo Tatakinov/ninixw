@@ -121,6 +121,15 @@ error:
     dlclose(module_);
 }
 
+Library::~Library() {
+    if (loaded_) {
+        unload();
+    }
+    if (valid_) {
+        dlclose(module_);
+    }
+}
+
 bool Library::load() {
     if (!valid_) {
         std::cerr << "invalid library" << std::endl;
