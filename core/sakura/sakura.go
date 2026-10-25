@@ -487,14 +487,21 @@ func (s *Sakura) MainLoop() {
 			case data, ok := <- s.script_ch:
 				if ok {
 					s.last_script = data.Data
-					asts = sakurascript.Parse(sakurascript.Lex(data.Data))
-					if len(asts) == 0 {
+					tmp := sakurascript.Parse(sakurascript.Lex(data.Data))
+					if len(tmp) == 0 {
 						continue
 					}
-					ast := asts[0]
+					ast := tmp[0]
 					if ast.Kind == sakurascript.PTag && ast.Str == `\C` {
-						// nop
+						for i := 0; i < len(asts); i++ {
+							if asts[i].Kind == sakurascript.PTag && asts[i].Str == `\e` {
+								asts = asts[:i]
+								break
+							}
+						}
+						asts = append(asts, tmp[1:]...)
 					} else {
+						asts = tmp
 						// initialize
 						s.quick_section = false
 						s.side = 0
