@@ -8,7 +8,7 @@ struct shm_t {
     char buf[MAX_PATH];
 };
 
-std::string readShm() {
+std::string readShm(int &err) {
     shm_t *mem;
     HANDLE fmo;
     HANDLE mutex = OpenMutex(SYNCHRONIZE, FALSE, "/ninix_mutex");
@@ -25,14 +25,17 @@ std::string readShm() {
     }
     mem = static_cast<shm_t *>(MapViewOfFile(fmo_, FILE_MAP_ALL_ACCESS, 0, 0, 0));
     if (mem == nullptr) {
+        err = 1;
         goto error_map;
     }
     std::string data(mem->buf, mem->size());
+    CloseHandle(fmo);
+    CloseHandle(mutex);
     return data;
 error_map:
-    CloseHandle(mutex);
-error_wait:
     CloseHandle(fmo);
+error_wait:
+    CloseHandle(mutex);
     return "";
 }
 
