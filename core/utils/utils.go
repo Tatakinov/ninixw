@@ -98,7 +98,7 @@ func CopyAll(dst string, src string) error {
 			return err
 		}
 		op := filepath.Join(dst, rel)
-		o, err := os.OpenFile(op, os.O_RDWR | os.O_CREATE, 0644)
+		o, err := os.OpenFile(op, os.O_RDWR | os.O_CREATE | os.O_TRUNC, 0644)
 		if err != nil {
 			log.Println(err)
 			return err
