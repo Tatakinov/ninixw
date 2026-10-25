@@ -30,6 +30,7 @@ type Baseware struct {
 	wg sync.WaitGroup
 	channel chan string
 	uuids with_mutex.WithMutex[string, struct{}]
+	installs with_mutex.WithMutex[string, struct{}]
 	scriptlog *scriptlog
 }
 
@@ -50,6 +51,7 @@ func NewBaseware() *Baseware {
 		wg: sync.WaitGroup{},
 		channel: make(chan string),
 		uuids: with_mutex.NewWithMutex[string, struct{}](),
+		installs: with_mutex.NewWithMutex[string, struct{}](),
 		scriptlog: newScriptlog(),
 	}
 }

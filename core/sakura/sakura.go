@@ -381,7 +381,7 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 			}
 			if strings.HasPrefix(homeurl, "http://") || strings.HasPrefix(homeurl, "https://") {
 				root := filepath.Dir(filepath.Dir(s.shiori.Path))
-				s.parent.UpdateGhost(homeurl, root, s)
+				s.parent.UpdateGhost(homeurl, root, s, "manual")
 			}
 		case "ChangeGhost":
 			if !s.fromAo(req) {

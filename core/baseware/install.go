@@ -27,6 +27,29 @@ func (b *Baseware) InstallNar(filename string, s interfaces.ISakura) {
 		Event: "OnInstallBegin",
 		Reference: []string{},
 	})
+	running := false
+	b.installs.Lock(func(m map[string]struct{}) {
+		_, ok := m[filename]
+		if ok {
+			running = true
+		} else {
+			m[filename] = struct{}{}
+		}
+	})
+	if running {
+		s.SendEvent(structs.Event{
+			Method: "GET",
+			Option: make(map[string]struct{}),
+			Event: "OnInstallFailure",
+			Reference: []string{ "executing" },
+		})
+		return
+	}
+	defer func() {
+		b.installs.Lock(func(m map[string]struct{}) {
+			delete(m, filename)
+		})
+	}()
 	u := ""
 	b.uuids.Lock(func(m map[string]struct{}) {
 		for {
@@ -199,21 +222,18 @@ func install(root string, s interfaces.ISakura, in bool) (string, string, string
 		if with_balloon {
 			dst := filepath.Join(path.BalloonDir(), b_dir)
 			if confirm(dst) {
-				src := os.DirFS(filepath.Join(root, b_src_dir))
-				err = os.CopyFS(dst, src)
-				if err != nil {
-					log.Println(err)
-					return "", "", "", err
-				}
+				src := filepath.Join(root, b_src_dir)
+				utils.CopyAll(dst, src)
+				os.RemoveAll(src)
 			} else {
 				// TODO cancel
+				return "", "", "", errors.New("artificial")
 			}
 		}
 		dir := m["directory"]
 		dst := filepath.Join(path.GhostDir(), dir)
 		if confirm(dst) {
-			src := os.DirFS(root)
-			err = os.CopyFS(dst, src)
+			err := utils.CopyAll(dst, root)
 			if err != nil {
 				log.Println(err)
 				return "", "", "", err
