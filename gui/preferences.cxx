@@ -6,13 +6,24 @@ Fl_Double_Window* make_window() {
   Fl_Double_Window* w;
   { Fl_Double_Window* o = new Fl_Double_Window(480, 320);
     w = o; (void)w;
-    { Fl_Button* o = new Fl_Button(273, 283, 64, 24, "OK");
+    { Fl_Button* o = new Fl_Button(273, 283, 64, 22, "OK");
       o->callback((Fl_Callback*)onButtonClick);
     } // Fl_Button* o
     { new Fl_Button(337, 283, 64, 22, "Apply");
     } // Fl_Button* o
     { new Fl_Button(401, 283, 64, 22, "Cancel");
     } // Fl_Button* o
+    { Fl_Choice* o = new Fl_Choice(172, 15, 204, 20, "font_name");
+      o->down_box(FL_BORDER_BOX);
+    } // Fl_Choice* o
+    { Fl_Choice* o = new Fl_Choice(172, 43, 204, 20, "font_size");
+      o->down_box(FL_BORDER_BOX);
+    } // Fl_Choice* o
+    { Fl_Choice* o = new Fl_Choice(172, 99, 204, 20, "default_balloon");
+      o->down_box(FL_BORDER_BOX);
+    } // Fl_Choice* o
+    { new Fl_Input(172, 71, 204, 20, "shell_scale");
+    } // Fl_Input* o
     o->end();
   } // Fl_Double_Window* o
   return w;

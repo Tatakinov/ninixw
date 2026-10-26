@@ -10,7 +10,7 @@ Function {make_window()} {open
     Fl_Button {} {
       label OK
       callback onButtonClick
-      xywh {273 283 64 24}
+      xywh {273 283 64 22}
     }
     Fl_Button {} {
       label Apply
@@ -20,8 +20,24 @@ Function {make_window()} {open
       label Cancel
       xywh {401 283 64 22}
     }
+    Fl_Choice {} {
+      label font_name open
+      xywh {172 15 204 20} down_box BORDER_BOX
+    } {}
+    Fl_Choice {} {
+      label font_size open
+      xywh {172 43 204 20} down_box BORDER_BOX
+    } {}
+    Fl_Choice {} {
+      label default_balloon open selected
+      xywh {172 99 204 20} down_box BORDER_BOX
+    } {}
+    Fl_Input {} {
+      label shell_scale
+      xywh {172 71 204 20}
+    }
   }
 }
 
-Function {onButtonClick(Fl_Widget *w, void *data)} {open selected return_type {static void}
+Function {onButtonClick(Fl_Widget *w, void *data)} {open return_type {static void}
 } {}
