@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"net"
 	"os/exec"
 	"path/filepath"
@@ -32,6 +33,9 @@ func main() {
 			create_new = true
 		} else {
 			soc.Close()
+			if *ghost_name == "" {
+				fmt.Println("ninixw is already running")
+			}
 			return
 		}
 	}

@@ -57,17 +57,22 @@ func NewBaseware() *Baseware {
 }
 
 func (b *Baseware) Load() {
+	fmt.Println("Loading...")
 	b.loadPreferences()
 	dirs := path.Dirs(path.GhostDir())
+	sum := 0
 	for _, dir := range dirs {
 		g, err := ghost.NewGhost(filepath.Join(path.GhostDir(), dir))
 		if err != nil {
 			continue
 		}
 		b.ghosts.Lock(func(m map[string]ghost.Ghost) {
-			m[dir] = g
+			m[g.Root] = g
 		})
+		sum++
 	}
+	fmt.Println(fmt.Sprintf("Loading %d ghosts", sum))
+	sum = 0
 	dirs = path.Dirs(path.BalloonDir())
 	for _, dir := range dirs {
 		balloon, err := ghost.NewBalloon(filepath.Join(path.BalloonDir(), dir))
@@ -77,7 +82,9 @@ func (b *Baseware) Load() {
 		b.balloons.Lock(func(m map[string]ghost.Balloon) {
 			m[dir] = balloon
 		})
+		sum++
 	}
+	fmt.Println(fmt.Sprintf("Loading %d balloons", sum))
 }
 
 func (b *Baseware) loadPreferences() {
@@ -138,8 +145,35 @@ func (b *Baseware) Run(ghost_name string) {
 		panic("no ghost or no balloon")
 	} else {
 		if ghost_name == "" {
-			ghost_name = "knowledgeable_kernel"
+			b.preferences.RLock(func(m map[string]string) {
+				ghost_name = m["last_ghost"]
+			})
+			if ghost_name == "" {
+				ghost_name = "knowledgeable_kernel"
+			}
 		}
+		b.ghosts.RLock(func(m map[string]ghost.Ghost) {
+			_, ok := m[ghost_name]
+			if ok {
+				return
+			}
+			ghost_name = filepath.Base(ghost_name)
+			for k, _ := range m {
+				name := filepath.Base(k)
+				if ghost_name == name {
+					ghost_name = k
+					ok = true
+					break
+				}
+			}
+			if ok {
+				return
+			}
+			for k, _ := range m {
+				ghost_name = k
+				break
+			}
+		})
 		err := b.StartSakura(ghost_name, "system", &sakura.Sakura{})
 		if err != nil {
 			log.Println(err)
@@ -152,7 +186,7 @@ func (b *Baseware) Run(ghost_name string) {
 func (b *Baseware) StartSakura(name string, reason string, from interfaces.ISakura) error {
 	var g ghost.Ghost
 	var balloon ghost.Balloon
-	var ok bool
+	ok := false
 	b.ghosts.RLock(func(m map[string]ghost.Ghost) {
 		g, ok = m[name]
 	})
@@ -213,11 +247,16 @@ func (b *Baseware) StartSakura(name string, reason string, from interfaces.ISaku
 		return err
 	}
 	b.sakuras.Lock(func(m map[string]*sakura.Sakura) {
-		m["knowledgeable_kernel"] = instance
+		m[g.Root] = instance
 	})
 	b.wg.Add(1)
 	go func() {
 		defer b.wg.Done()
+		defer func() {
+			b.preferences.Lock(func (m map[string]string) {
+				m["last_ghost"] = g.Root
+			})
+		}()
 		instance.SendEvent(structs.Event{
 			Method: "NOTIFY",
 			Option: make(map[string]struct{}),

@@ -24,6 +24,7 @@ type Balloon struct {
 
 type Ghost struct {
 	baseInfo
+	Root string
 	Shells map[string]Shell
 }
 
@@ -45,7 +46,7 @@ func NewGhost(ghost_path string) (Ghost, error) {
 	if len(shells) == 0 {
 		return Ghost {}, errors.New("no valid shell")
 	}
-	return Ghost { baseInfo: baseInfo{ Key: filepath.Base(ghost_path), Path: filepath.Join(ghost_path, "ghost", "master"), Descript: desc }, Shells: shells }, nil
+	return Ghost { baseInfo: baseInfo{ Key: filepath.Base(ghost_path), Path: filepath.Join(ghost_path, "ghost", "master"), Descript: desc }, Root: ghost_path, Shells: shells }, nil
 }
 
 func NewBalloon(p string) (Balloon, error) {
