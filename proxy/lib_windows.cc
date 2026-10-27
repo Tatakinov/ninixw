@@ -4,7 +4,7 @@
 #include <windows.h>
 
 using load_t = BOOL (__cdecl *)(HGLOBAL h, long len);
-using unloat_t = BOOL (__cdecl *)();
+using unload_t = BOOL (__cdecl *)();
 using request_t = HGLOBAL (__cdecl *)(HGLOBAL h, long *len);
 
 Library::Library(int argc, char *argv[]) : valid_(false), loaded_(false), module_(nullptr) {
@@ -43,7 +43,6 @@ Library::~Library() {
 
 bool Library::load() {
     if (!valid_) {
-        std::cerr << "invalid library" << std::endl;
         return false;
     }
     if (loadu_f_ == nullptr) {
@@ -51,7 +50,7 @@ bool Library::load() {
         HGLOBAL h = GlobalAlloc(GPTR, p.length() + 1);
         if (h == nullptr) {
             FreeLibrary(module_);
-            valid = false;
+            valid_ = false;
             return false;
         }
         memcpy(h, p.data(), p.length());
@@ -73,21 +72,21 @@ bool Library::load() {
         }
         memcpy(h, p.c_str(), p.length());
         auto f = reinterpret_cast<load_t>(loadu_f_);
-        if (!loadu(h, p.length())) {
+        if (!f(h, p.length())) {
             FreeLibrary(module_);
             valid_ = false;
             return 1;
         }
     }
     loaded_ = true;
+    return true;
 }
 
 std::string Library::request(const std::string &req) {
     if (!valid_ || !loaded_) {
-        std::cerr << "invalid library" << std::endl;
         return "";
     }
-    auto len = req.length();
+    long len = req.length();
     HGLOBAL h = GlobalAlloc(GPTR, len + 1);
     if (h == nullptr) {
         FreeLibrary(module_);
@@ -107,7 +106,6 @@ std::string Library::request(const std::string &req) {
 
 bool Library::unload() {
     if (!valid_ || !loaded_) {
-        std::cerr << "invalid library" << std::endl;
         return false;
     }
     auto f = reinterpret_cast<unload_t>(unload_f_);

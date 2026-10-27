@@ -6,6 +6,8 @@
 
 #if defined(_WIN32) || defined(WIN32)
 
+#include <fcntl.h>
+#include <io.h>
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 

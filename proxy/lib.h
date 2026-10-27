@@ -2,6 +2,7 @@
 #define NINIXW_PROXY_LIB_H_
 
 #include <filesystem>
+#include <string>
 
 #if defined(_WIN32) || defined(WIN32)
 #define WIN32_LEAN_AND_MEAN
@@ -13,7 +14,6 @@ using func_t = FARPROC;
 
 #else
 
-#include <string>
 #include <vector>
 #include <ffi.h>
 
