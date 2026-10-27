@@ -16,25 +16,29 @@
 namespace {
     std::unique_ptr<Preferences> prefs;
     auto font_list = fontlist::enumerate_font();
-    std::vector<int> font_size_list = {
-        8, 9,
-        10, 11, 12, 14, 16, 18,
-        20, 22, 24, 28, 32, 36,
-        40, 44, 48, 56, 64, 72,
-        80, 88, 96,
+    std::vector<std::string> font_size_list = {
+        "8", "9",
+        "10", "11", "12", "14", "16", "18",
+        "20", "22", "24", "28", "32", "36",
+        "40", "44", "48", "56", "64", "72",
+        "80", "88", "96",
     };
-    std::vector<int> shell_scale_list = {
-        25, 40, 50, 80, 100, 125, 150, 175, 200, 250, 300, 350, 400,
+    std::vector<std::string> shell_scale_list = {
+        "25", "40", "50", "80", "100", "125", "150", "175",
+        "200", "250", "300", "350", "400",
     };
+    std::vector<std::string> balloon_list;
 
     void onOK(Fl_Widget *w, void *data) {
         std::cout << prefs->serialize() << std::endl;
+        reinterpret_cast<Fl_Double_Window *>(data)->hide();
     }
     void onApply(Fl_Widget *w, void *data) {
         std::cout << prefs->serialize() << std::endl;
     }
     void onCancel(Fl_Widget *w, void *data) {
         std::cout << prefs->original() << std::endl;
+        reinterpret_cast<Fl_Double_Window *>(data)->hide();
     }
     void onSelectFontName(Fl_Widget *w, void *data) {
         int index = reinterpret_cast<Fl_Choice *>(w)->value();
@@ -62,10 +66,11 @@ int main() {
         line = line.substr(0, line.length() - 1);
     }
     prefs = std::make_unique<Preferences>(line);
+    balloon_list = prefs->balloonList();
     auto *w = new Fl_Double_Window(480, 320);
     {
         auto *o = new Fl_Button(273, 283, 64, 22, "OK");
-        o->callback((Fl_Callback*)onOK);
+        o->callback((Fl_Callback*)onOK, w);
     } // Fl_Button* o
     {
         auto *o = new Fl_Button(337, 283, 64, 22, "Apply");
@@ -73,7 +78,7 @@ int main() {
     } // Fl_Button* o
     {
         auto *o = new Fl_Button(401, 283, 64, 22, "Cancel");
-        o->callback((Fl_Callback*)onCancel);
+        o->callback((Fl_Callback*)onCancel, w);
     } // Fl_Button* o
     {
         auto *o = new Fl_Choice(172, 15, 204, 20, "font_name");
@@ -87,7 +92,16 @@ int main() {
             }
         }
         if (index == -1) {
-            index = 0;
+            auto family = fontlist::get_default_font();
+            prefs->font_name = family.name;
+            for (int i = 0; i < list.size(); i++) {
+                if (list[i].name == prefs->font_name) {
+                    index = i;
+                }
+            }
+            if (index == -1) {
+                index = 0;
+            }
         }
         o->value(index);
         o->callback(onSelectFontName);
@@ -98,16 +112,14 @@ int main() {
         auto list = font_size_list;
         int index = -1;
         for (int i = 0; i < list.size(); i++) {
-            std::ostringstream oss;
-            oss << list[i];
-            auto s = oss.str();
-            o->add(s.c_str());
+            o->add(list[i].c_str());
             if (list[i] == prefs->font_size) {
                 index = i;
             }
         }
         if (index == -1) {
-            index = 0;
+            prefs->font_size = "12";
+            index = 4;
         }
         o->value(index);
         o->callback(onSelectFontSize);
@@ -117,16 +129,14 @@ int main() {
         auto list = shell_scale_list;
         int index = -1;
         for (int i = 0; i < list.size(); i++) {
-            std::ostringstream oss;
-            oss << list[i];
-            auto s = oss.str();
-            o->add(s.c_str());
+            o->add(list[i].c_str());
             if (list[i] == prefs->shell_scale) {
                 index = i;
             }
         }
         if (index == -1) {
-            index = 0;
+            prefs->shell_scale = 100;
+            index = 4;
         }
         o->value(index);
         o->callback(onSelectShellScale);

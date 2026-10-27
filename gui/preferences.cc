@@ -5,13 +5,6 @@
 #include "fontlist.hpp"
 
 namespace {
-    int get(const Json::Value &v, const char *k, int fallback = 0) {
-        if (v.isMember(k) && v[k].isInt()) {
-            return v[k].asInt();
-        }
-        return fallback;
-    }
-
     std::string get(const Json::Value &v, const char *k, std::string fallback = "") {
         if (v.isMember(k) && v[k].isString()) {
             return v[k].asString();
@@ -26,15 +19,16 @@ Preferences::Preferences(const std::string &json_str) : original_(json_str) {
     reader.parse(json_str, value);
     auto family = fontlist::get_default_font();
     font_name = get(value, "font_name", family.name);
-    font_size = get(value, "font_size", 12);
-    if (font_size < 5) {
-        font_size = 12;
-    }
-    shell_scale = get(value, "shell_scale", 100);
-    if (shell_scale < 5) {
-        shell_scale = 100;
-    }
+    font_size = get(value, "font_size", "12");
+    shell_scale = get(value, "shell_scale", "100");
     default_balloon = get(value, "default_balloon", "");
+    if (value.isMember("balloons")) {
+        for (auto &v : value["balloons"]) {
+            if (v.isString()) {
+                balloon_list_.push_back(v.asString());
+            }
+        }
+    }
 }
 
 Preferences::~Preferences() {}
@@ -54,3 +48,6 @@ std::string Preferences::original() const {
     return original_;
 }
 
+std::vector<std::string> Preferences::balloonList() const {
+    return balloon_list_;
+}
