@@ -32,6 +32,10 @@ std::string readShm(int &err) {
         return "";
     }
     std::string data(mem->buf, mem->size);
+    if (sem_post(&mem->sem) == -1) {
+        err = 1;
+        return "";
+    }
     return data;
 }
 
