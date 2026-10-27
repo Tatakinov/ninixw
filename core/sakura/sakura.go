@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -180,7 +181,12 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 	case "NOTIFY", "SEND":
 		event, _ := req.Header["Event"]
 		if event != "" {
-			s.SendEvent(structs.Event{ Method: "GET", Option: make(map[string]struct{}), Event: event, Reference: req.Reference })
+			script := s.SendEvent(structs.Event{ Method: "GET", Option: make(map[string]struct{}), Event: event, Reference: req.Reference })
+			if script != "" {
+				header := sstp.NewSSTPHeader(req.KeepAlive())
+				header["Script"] = script
+				return sstp.NewResponse(204, "No Content", header, "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
 		} else {
 			// TODO ifghost
 			data, _ := req.Script[""]
@@ -365,6 +371,11 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
 			}
 			s.parent.OpenScriptLog()
+		case "OpenPreferences":
+			if !s.fromAo(req) {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			s.parent.OpenPreferences()
 		case "UpdateGhost":
 			if !s.fromAo(req) {
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
@@ -978,13 +989,13 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 	return asts[index:], nil
 }
 
-func (s *Sakura) SendEvent(event ...structs.Event) {
+func (s *Sakura) SendEvent(event ...structs.Event) string {
 	if len(event) == 0 {
-		return
+		return ""
 	}
 	select {
 	case <- s.quit:
-		return
+		return ""
 	default:
 		// nop
 	}
@@ -994,7 +1005,7 @@ func (s *Sakura) SendEvent(event ...structs.Event) {
 		res, err := s.shiori.Request(e.Method, e.Event, e.Reference...)
 		if err != nil {
 			log.Println(err)
-			return
+			return ""
 		}
 		tmp, ok := res.Header["Value"]
 		if ok {
@@ -1027,6 +1038,7 @@ func (s *Sakura) SendEvent(event ...structs.Event) {
 					Status: e.Option,
 					Script: t,
 				})
+				v = t
 			} else {
 				_, ok = e.Option["embed"]
 				s.script_ch <- script{ Data: v, Embed: ok }
@@ -1044,10 +1056,11 @@ func (s *Sakura) SendEvent(event ...structs.Event) {
 		s.alive = false
 	case "OnMouseClick":
 		if len(e.Reference) < 6 || e.Reference[5] != "1" || v != "" {
-			return
+			return v
 		}
 		s.openMenu(e.Reference[3])
 	}
+	return v
 }
 
 func (s *Sakura) openMenu(from string) {
@@ -1329,4 +1342,23 @@ func (s *Sakura) LoadBalloon(b string) error {
 	}
 	s.ai = a
 	return nil
+}
+
+func (s *Sakura) OnConfigurationChanged() {
+	m := make(map[string]string)
+	shell_scale, ok := s.parent.GetPreferences("shell_scale")
+	if !ok {
+		shell_scale = "100"
+	}
+	m["scale"] = shell_scale
+	font_name, ok := s.parent.GetPreferences("font_name")
+	if ok {
+		m["font"] = font_name
+	}
+	args := make([]string, 0, len(m))
+	for k, v := range m {
+		args = append(args, fmt.Sprintf("%s,%s", k, v))
+	}
+	s.ao.Request("NOTIFY", "ConfigurationChanged", args...)
+	s.ai.Request("NOTIFY", "ConfigurationChanged", args...)
 }

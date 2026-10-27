@@ -31,7 +31,8 @@ type Baseware struct {
 	channel chan string
 	uuids with_mutex.WithMutex[string, struct{}]
 	installs with_mutex.WithMutex[string, struct{}]
-	scriptlog *scriptlog
+	scriptlogProcess *scriptlog
+	preferencesProcess *preferences
 }
 
 func NewBaseware() *Baseware {
@@ -52,7 +53,8 @@ func NewBaseware() *Baseware {
 		channel: make(chan string),
 		uuids: with_mutex.NewWithMutex[string, struct{}](),
 		installs: with_mutex.NewWithMutex[string, struct{}](),
-		scriptlog: newScriptlog(),
+		scriptlogProcess: newScriptlog(),
+		preferencesProcess: newPreferences(),
 	}
 }
 
@@ -382,7 +384,7 @@ func (b *Baseware) SetPreferences(k string, v string) {
 }
 
 func (b *Baseware) OpenScriptLog() {
-	err := b.scriptlog.Exec()
+	err := b.scriptlogProcess.Exec()
 	if err != nil {
 		log.Println(err)
 	}
@@ -396,5 +398,20 @@ func (b *Baseware) AppendScriptLog(_ string, data structs.LogData) {
 	slices.SortFunc(s, func(a string, b string) int {
 		return cmp.Compare(a, b)
 	})
-	b.scriptlog.Append(fmt.Sprintf("%s\x01%s\x01%s\x01%s", data.Time.Format("2006-01-02 15:04:05"), data.Ghost, strings.Join(s, ","), data.Script))
+	b.scriptlogProcess.Append(fmt.Sprintf("%s\x01%s\x01%s\x01%s", data.Time.Format("2006-01-02 15:04:05"), data.Ghost, strings.Join(s, ","), data.Script))
+}
+
+func (b *Baseware) OpenPreferences() {
+	err := b.preferencesProcess.Exec(b)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func (b *Baseware) NotifyConfigurationChanged() {
+	b.sakuras.RLock(func(m map[string]*sakura.Sakura) {
+		for _, v := range m {
+			v.OnConfigurationChanged()
+		}
+	})
 }

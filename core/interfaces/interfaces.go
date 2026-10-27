@@ -6,7 +6,7 @@ import (
 )
 
 type ISakura interface {
-	SendEvent(event ...structs.Event)
+	SendEvent(event ...structs.Event) string
 	GhostPath() string
 	GhostName() string
 	SakuraName() string
@@ -26,4 +26,6 @@ type IBaseware interface {
 	UpdateGhost(url string, root string, s ISakura, reason string)
 	OpenScriptLog()
 	AppendScriptLog(kind string, data structs.LogData)
+	OpenPreferences()
+	NotifyConfigurationChanged()
 }

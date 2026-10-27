@@ -92,58 +92,68 @@ func (s shiori) Request(method string, command string, args ...string) (Response
 		if !ok {
 			return Response{}, errors.New("channel closed")
 		}
-		iss := strings.NewReader(data)
-		reader := bufio.NewReader(iss)
-		bytes, err := utils.ReadLine(reader)
-		if err != nil {
-			return Response{}, err
-		}
-		line := string(bytes)
-		line = strings.TrimRight(line, "\r\n")
-		slice := strings.SplitN(line, " ", 3)
-		if len(slice) < 3 {
-			return Response{}, errors.New("invalid shiori status line")
-		}
-		p := slice[0]
-		c, err := strconv.Atoi(slice[1])
-		if err != nil {
-			return Response{}, err
-		}
-		m := slice[2]
-		h := make(map[string]string)
-		for {
-			bytes, err = utils.ReadLine(reader)
+		f := func() (Response, error) {
+			iss := strings.NewReader(data)
+			reader := bufio.NewReader(iss)
+			if s.charset == "Shift_JIS" {
+				reader = bufio.NewReader(transform.NewReader(iss, japanese.ShiftJIS.NewDecoder()))
+			}
+			bytes, err := utils.ReadLine(reader)
 			if err != nil {
-				log.Println(err)
 				return Response{}, err
 			}
-			line = string(bytes)
+			line := string(bytes)
 			line = strings.TrimRight(line, "\r\n")
-			if line == "" {
-				break
+			slice := strings.SplitN(line, " ", 3)
+			if len(slice) < 3 {
+				return Response{}, errors.New("invalid shiori status line")
 			}
-			slice = strings.SplitN(line, ":", 2)
-			if len(slice) != 2 {
-				return Response{}, errors.New("invalid shiori header")
+			p := slice[0]
+			c, err := strconv.Atoi(slice[1])
+			if err != nil {
+				return Response{}, err
 			}
-			key := strings.TrimSpace(slice[0])
-			value := strings.TrimSpace(slice[1])
-			h[key] = value
+			m := slice[2]
+			h := make(map[string]string)
+			for {
+				bytes, err = utils.ReadLine(reader)
+				if err != nil {
+					log.Println(err)
+					return Response{}, err
+				}
+				line = string(bytes)
+				line = strings.TrimRight(line, "\r\n")
+				if line == "" {
+					break
+				}
+				slice = strings.SplitN(line, ":", 2)
+				if len(slice) != 2 {
+					return Response{}, errors.New("invalid shiori header")
+				}
+				key := strings.TrimSpace(slice[0])
+				value := strings.TrimSpace(slice[1])
+				h[key] = value
+			}
+			return Response {
+				Protocol: p,
+				Code: c,
+				Message: m,
+				Header: h,
+			}, nil
 		}
 		if s.charset == "" {
-			switch h["Charset"] {
+			res, err := f()
+			if err != nil {
+				return Response{}, err
+			}
+			switch res.Header["Charset"] {
 			case "Shift_JIS", "":
 				s.charset = "Shift_JIS"
 			default:
 				s.charset = "UTF-8"
 			}
 		}
-		return Response {
-			Protocol: p,
-			Code: c,
-			Message: m,
-			Header: h,
-		}, nil
+		return f()
 	} else {
 		return Response{
 			Protocol: "SHIORI/3.0",
