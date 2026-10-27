@@ -8,8 +8,10 @@ import (
 type ISakura interface {
 	SendEvent(event ...structs.Event) string
 	GhostPath() string
+	GhostRoot() string
 	GhostName() string
 	SakuraName() string
+	KeroName() string
 	LastScript() string
 }
 

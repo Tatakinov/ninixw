@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"fmt"
@@ -28,11 +29,16 @@ func main() {
 	}
 	shm_output := strings.TrimRight(string(shm_bytes), "\r\n")
 	if shm_output != "" {
-		soc, err := net.Dial("unix", shm_output)
+		conn, err := net.Dial("unix", shm_output)
 		if err != nil {
 			create_new = true
 		} else {
-			soc.Close()
+			defer conn.Close()
+			if *ghost_name != "" {
+				w := bufio.NewWriter(conn)
+				fmt.Fprintln(w, fmt.Sprintf("CallGhost:%s", *ghost_name))
+				w.Flush()
+			}
 			if *ghost_name == "" {
 				fmt.Println("ninixw is already running")
 			}

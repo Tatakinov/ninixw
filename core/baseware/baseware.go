@@ -3,8 +3,11 @@ package baseware
 import (
 	"bufio"
 	"cmp"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"slices"
@@ -181,7 +184,73 @@ func (b *Baseware) Run(ghost_name string) {
 			log.Println(err)
 		}
 	}
+	p := filepath.Join(path.SockDir(), "ninix")
+	server, err := net.Listen("unix", p)
+	if err != nil {
+		log.Println(err)
+	}
+	quit := make(chan struct{})
+	go func() {
+		<- quit
+		server.Close()
+		os.Remove(p)
+	}()
+	go func() {
+		for {
+			conn, err := server.Accept()
+			if err != nil {
+				break
+			}
+			go func() {
+				defer conn.Close()
+				r := bufio.NewReader(conn)
+				w := bufio.NewWriter(conn)
+				for {
+					bytes, err := utils.ReadLine(r)
+					if err != nil {
+						if err != io.EOF {
+							log.Println(err)
+						}
+						break
+					}
+					line := string(bytes)
+					s := strings.SplitN(line, ":", 2)
+					command := s[0]
+					args := ""
+					if len(s) == 2 {
+						args = s[1]
+					}
+					switch command {
+					case "GetFMO":
+						data := make([]string, 0)
+						b.sakuras.RLock(func(m map[string]*sakura.Sakura) {
+							for _, v := range m {
+								data = append(data, fmt.Sprintf("%s.path\x01%s", v.Uuid(), path.HomeDir()))
+								data = append(data, fmt.Sprintf("%s.name\x01%s", v.Uuid(), v.SakuraName()))
+								data = append(data, fmt.Sprintf("%s.keroname\x01%s", v.Uuid(), v.KeroName()))
+								data = append(data, fmt.Sprintf("%s.ghostpath\x01%s", v.Uuid(), v.GhostRoot()))
+								data = append(data, fmt.Sprintf("%s.fullname\x01%s", v.Uuid(), v.GhostName()))
+							}
+						})
+						fmo := fmt.Sprintf("%s\r\n", strings.Join(data, "\r\n"))
+						var length uint32 = uint32(len(fmo))
+						buf := make([]byte, 4)
+						binary.LittleEndian.PutUint32(buf, length)
+						w.Write(buf)
+						w.WriteString(fmo)
+						w.Flush()
+					case "CallGhost":
+						err := b.StartSakura(args, "system", &sakura.Sakura{})
+						if err != nil {
+							log.Println(err)
+						}
+					}
+				}
+			}()
+		}
+	}()
 	b.wg.Wait()
+	close(quit)
 	b.savePreferences()
 }
 
@@ -196,6 +265,17 @@ func (b *Baseware) StartSakura(name string, reason string, from interfaces.ISaku
 		b.ghosts.RLock(func(m map[string]ghost.Ghost) {
 			for _, v := range m {
 				if v.Descript["name"] == name {
+					g = v
+					ok = true
+					break
+				}
+			}
+		})
+	}
+	if !ok {
+		b.ghosts.RLock(func(m map[string]ghost.Ghost) {
+			for _, v := range m {
+				if filepath.Base(v.Root) == name {
 					g = v
 					ok = true
 					break

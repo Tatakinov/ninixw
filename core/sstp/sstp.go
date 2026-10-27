@@ -4,10 +4,12 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"strings"
 
+	"ninixw-core/log"
 	"ninixw-core/utils"
 )
 
@@ -107,11 +109,15 @@ func HandleSSTP(is ISSTP, server net.Listener) {
 			for {
 				bytes, err := utils.ReadLine(reader)
 				if err != nil {
+					if err != io.EOF {
+						log.Println(err)
+					}
 					break
 				}
 				line := string(bytes)
 				req, err := Parse(reader, line)
 				if err != nil {
+					log.Println(err)
 					break
 				}
 				res := is.ProcessSSTP(req)

@@ -1294,6 +1294,10 @@ func (s *Sakura) openMenu(from string) {
 	s.ao.Request("NOTIFY", "NotifyMenuInfo", string(bytes))
 }
 
+func (s *Sakura) Uuid() string {
+	return s.uuid
+}
+
 func (s *Sakura) GhostName() string {
 	return s.shiori.Descript["name"]
 }
@@ -1302,8 +1306,16 @@ func (s *Sakura) GhostPath() string {
 	return s.shiori.Path
 }
 
+func (s *Sakura) GhostRoot() string {
+	return s.shiori.Root
+}
+
 func (s *Sakura) SakuraName() string {
 	return s.shiori.Descript["sakura.name"]
+}
+
+func (s *Sakura) KeroName() string {
+	return s.shiori.Descript["kero.name"]
 }
 
 func (s *Sakura) LastScript() string {
