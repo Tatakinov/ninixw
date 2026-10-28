@@ -5,7 +5,7 @@ SET(SRCS main.cc)
 SET(INCLUDE_DIRS ${PROJECT_SOURCE_DIR})
 
 if(WIN32)
-    SET(SRCS lib_windows.cc)
+    SET(SRCS ${SRCS} lib_windows.cc)
 else()
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(LIBFFI REQUIRED libffi)
