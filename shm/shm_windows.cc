@@ -42,7 +42,7 @@ error_wait:
 
 Shm::Shm(const std::string &data, int flag) {
     shm_t *mem;
-    fmo_ = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, sizeof(struct shm_t), "/ninix");
+    fmo_ = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, sizeof(struct shm_t), L"/ninix");
     if (fmo_ == nullptr) {
         return;
     }
