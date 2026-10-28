@@ -1,4 +1,4 @@
-name: deploy sorakado-builtin.exe
+name: deploy ninixw
 
 on:
   workflow_dispatch:
