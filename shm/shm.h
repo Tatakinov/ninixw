@@ -2,6 +2,7 @@
 #define NINIXW_SHM_SHM_H_
 
 #include <cstdint>
+#include <string>
 
 #if defined(_WIN32) || defined(WIN32)
 
@@ -12,7 +13,6 @@
 
 #include <fcntl.h>
 #include <semaphore.h>
-#include <string>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -27,8 +27,8 @@ class Shm {
     private:
         bool valid_;
 #if defined(_WIN32) || defined(WIN32)
-        HANDLE mutex;
-        HANDLE fmo;
+        HANDLE mutex_;
+        HANDLE fmo_;
 #endif // WIN32
     public:
         Shm(const std::string &data, int flag);

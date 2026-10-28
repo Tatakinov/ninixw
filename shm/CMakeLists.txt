@@ -5,7 +5,7 @@ SET(SRCS main.cc)
 SET(INCLUDE_DIRS ${PROJECT_SOURCE_DIR})
 
 if(WIN32)
-    SET(SRCS shm_windows.cc)
+    SET(SRCS ${SRCS} shm_windows.cc)
 else()
     SET(SRCS ${SRCS} shm_others.cc)
     SET(LIBS -lpthread)

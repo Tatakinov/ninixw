@@ -9,6 +9,7 @@ struct shm_t {
 };
 
 std::string readShm(int &err) {
+    std::string data;
     shm_t *mem;
     HANDLE fmo;
     HANDLE mutex = OpenMutex(SYNCHRONIZE, FALSE, "/ninix_mutex");
@@ -23,12 +24,12 @@ std::string readShm(int &err) {
     if (fmo == nullptr) {
         goto error_wait;
     }
-    mem = static_cast<shm_t *>(MapViewOfFile(fmo_, FILE_MAP_ALL_ACCESS, 0, 0, 0));
+    mem = static_cast<shm_t *>(MapViewOfFile(fmo, FILE_MAP_ALL_ACCESS, 0, 0, 0));
     if (mem == nullptr) {
         err = 1;
         goto error_map;
     }
-    std::string data(mem->buf, mem->size());
+    data = std::string(mem->buf, mem->size);
     CloseHandle(fmo);
     CloseHandle(mutex);
     return data;
@@ -60,7 +61,6 @@ Shm::Shm(const std::string &data, int flag) {
     return;
 error_mutex:
     UnmapViewOfFile(mem);
-    if (0) {
 error_map:
     CloseHandle(fmo_);
 }
@@ -70,5 +70,5 @@ Shm::~Shm() {
         return;
     }
     CloseHandle(mutex_);
-    CloseHandle(fmo);
+    CloseHandle(fmo_);
 }
