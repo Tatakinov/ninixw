@@ -141,11 +141,23 @@ int main() {
         o->value(index);
         o->callback(onSelectShellScale);
     } // Fl_Choice* o
-    { Fl_Choice* o = new Fl_Choice(172, 99, 204, 20, "default_balloon");
-      o->down_box(FL_BORDER_BOX);
-      o->add("balloon_terminal");
-      o->value(0);
-      o->callback(onSelectBalloon);
+    {
+        Fl_Choice* o = new Fl_Choice(172, 99, 204, 20, "default_balloon");
+        o->down_box(FL_BORDER_BOX);
+        auto list = balloon_list;
+        int index = -1;
+        for (int i = 0; i < list.size(); i++) {
+            o->add(list[i].c_str());
+            if (list[i] == prefs->default_balloon) {
+                index = i;
+            }
+        }
+        if (index == -1) {
+            prefs->default_balloon = "";
+            index = 0;
+        }
+        o->value(index);
+        o->callback(onSelectBalloon);
     } // Fl_Choice* o
     w->end();
     w->show();
