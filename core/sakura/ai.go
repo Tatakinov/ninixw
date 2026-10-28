@@ -19,13 +19,14 @@ func newAi(balloon ghost.Balloon) (ai, error) {
 	if exe == "" {
 		exe = "sorakado_builtin.exe"
 	}
+	dir := path.SorakadoStem(exe)
 	s := []string{
 		path.AiDir(),
 		path.SorakadoDir(),
 		path.ExecutableDir(),
 	}
 	for _, p := range s {
-		process, err := process.NewProcess(filepath.Join(p, exe))
+		process, err := process.NewProcess(filepath.Join(p, dir, exe))
 		if err != nil {
 			continue
 		}

@@ -18,6 +18,13 @@ func SorakadoDir() string {
 	return filepath.Join(ExecutableDir(), "internal", "sorakado")
 }
 
+func SorakadoStem(path string) string {
+	base := filepath.Base(path)
+	ext := filepath.Ext(base)
+	stem := strings.TrimSuffix(base, ext)
+	return stem
+}
+
 func ProxyDir() string {
 	return filepath.Join(ExecutableDir(), "internal", "proxy")
 }

@@ -41,6 +41,10 @@ func SorakadoDir() string {
 	return path
 }
 
+func SorakadoStem(_ string) string {
+	return ""
+}
+
 func ProxyDir() string {
 	path := os.Getenv("NINIXW_LIBEXEC_PATH")
 	if path == "" {
