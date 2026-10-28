@@ -12,7 +12,7 @@ std::string readShm(int &err) {
     std::string data;
     shm_t *mem;
     HANDLE fmo;
-    HANDLE mutex = OpenMutex(SYNCHRONIZE, FALSE, "/ninix_mutex");
+    HANDLE mutex = OpenMutex(SYNCHRONIZE, FALSE, L"/ninix_mutex");
     if (mutex == nullptr) {
         return "";
     }
@@ -20,7 +20,7 @@ std::string readShm(int &err) {
     if (result != WAIT_OBJECT_0) {
         goto error_wait;
     }
-    fmo = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, "/ninix");
+    fmo = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, L"/ninix");
     if (fmo == nullptr) {
         goto error_wait;
     }
@@ -50,7 +50,7 @@ Shm::Shm(const std::string &data, int flag) {
     if (mem == nullptr) {
         goto error_map;
     }
-    mutex_ = CreateMutex(NULL, TRUE, "/ninix_mutex");
+    mutex_ = CreateMutex(NULL, TRUE, L"/ninix_mutex");
     if (mutex_ == NULL) {
         goto error_mutex;
     }
