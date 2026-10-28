@@ -1,8 +1,11 @@
-mkdir -p win/internal/gui win/internal/proxy win/internal/shm win/internal/sorakado/sorakado_builtin
+mkdir win/internal/gui
+mkdir win/internal/proxy
+mkdir win/internal/shm
+mkdir win/internal/sorakado/sorakado_builtin
 
 pushd core && go build -o ../win/ninixw.exe . && popd
 cmake -S . -B build && cmake --build build --config Release
-cp build/gui/Release/ninixw-* win/internal/gui/
-cp build/proxy/Release/ninixw-* win/internal/proxy/
-cp build/shm/Release/ninixw-* win/internal/shm/
-cp build/sorakado/Release/sorakado_builtin.exe win/internal/sorakado/sorakado_builtin/
+Copy-Item -Path build/gui/Release -Destination win/internal/gui -Recurse
+Copy-Item -Path build/proxy/Release -Destination win/internal/proxy -Recurse
+Copy-Item -Path build/shm/Release -Destination win/internal/shm -Recurse
+Copy-Item -Path build/sorakado/Release -Destination win/internal/sorakado/sorakado_builtin -Recurse
