@@ -4,7 +4,7 @@ project(ninixw-gui CXX)
 find_package(FLTK REQUIRED)
 find_package(jsoncpp REQUIRED)
 
-SET(INCLUDE_DIRS ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/libfontlist/include ${FLTK_INCLUDE_DIRS})
+SET(INCLUDE_DIRS ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/libfontlist/include ${FLTK_INCLUDE_DIR} ${FLTK_INCLUDE_DIRS})
 
 add_executable(ninixw-preferences ninixw-preferences.cc preferences.cc)
 set_target_properties(ninixw-preferences PROPERTIES SUFFIX ".exe")
