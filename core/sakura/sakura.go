@@ -1322,7 +1322,7 @@ func (s *Sakura) LastScript() string {
 	return s.last_script
 }
 
-func (s *Sakura) ReloadShiori(b string) error {
+func (s *Sakura) ReloadShiori() error {
 	s.shiori.Stop()
 	sh, err := newShiori(ghost.Ghost{ Key: s.shiori.Key, Path: s.shiori.Path, Descript: s.shiori.Descript })
 	if err != nil {
