@@ -13,7 +13,7 @@ type ISakura interface {
 	SakuraName() string
 	KeroName() string
 	LastScript() string
-	ReloadShiori()
+	ReloadShiori() error
 	ReloadShell()
 	ReloadBalloon()
 }
