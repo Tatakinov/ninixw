@@ -1,6 +1,9 @@
 package path
 
-import "path/filepath"
+import (
+	"path/filepath"
+	"strings"
+)
 
 func HomeDir() string {
 	return filepath.Join(ExecutableDir(), ".ninix")
