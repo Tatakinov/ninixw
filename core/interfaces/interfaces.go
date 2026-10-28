@@ -13,6 +13,9 @@ type ISakura interface {
 	SakuraName() string
 	KeroName() string
 	LastScript() string
+	ReloadShiori()
+	ReloadShell()
+	ReloadBalloon()
 }
 
 type IBaseware interface {

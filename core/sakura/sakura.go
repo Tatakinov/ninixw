@@ -185,7 +185,7 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 			if script != "" {
 				header := sstp.NewSSTPHeader(req.KeepAlive())
 				header["Script"] = script
-				return sstp.NewResponse(204, "No Content", header, "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+				return sstp.NewResponse(200, "OK", header, "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
 			}
 		} else {
 			// TODO ifghost
@@ -1342,6 +1342,10 @@ func (s *Sakura) LoadShell(shell string) error {
 	return nil
 }
 
+func (s *Sakura) ReloadShell() {
+	s.ao.Request("NOTIFY", "Reload")
+}
+
 func (s *Sakura) LoadBalloon(b string) error {
 	balloon, err := s.parent.GetBalloon(b)
 	if err != nil {
@@ -1354,6 +1358,10 @@ func (s *Sakura) LoadBalloon(b string) error {
 	}
 	s.ai = a
 	return nil
+}
+
+func (s *Sakura) ReloadBalloon() {
+	s.ai.Request("NOTIFY", "Reload")
 }
 
 func (s *Sakura) OnConfigurationChanged() {

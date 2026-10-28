@@ -338,6 +338,9 @@ func (b *Baseware) UpdateGhost(url string, root string, s interfaces.ISakura, re
 		})
 		return
 	}
+	s.ReloadShiori()
+	s.ReloadShell()
+	s.ReloadBalloon()
 	s.SendEvent(structs.Event{
 		Method: "GET",
 		Option: make(map[string]struct{}),
