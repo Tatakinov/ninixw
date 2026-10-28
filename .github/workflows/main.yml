@@ -32,6 +32,6 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v7
       with:
-          name: sorakado-builtin-windows
+          name: ninixw-windows
           path: |
               win
