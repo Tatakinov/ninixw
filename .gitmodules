@@ -1,6 +1,3 @@
 [submodule "sorakado"]
 	path = sorakado
 	url = https://github.com/Tatakinov/sorakado_builtin
-[submodule "gui/libfontlist"]
-	path = gui/libfontlist
-	url = https://github.com/Tatakinov/libfontlist

@@ -6,8 +6,6 @@ SET(INCLUDE_DIRS ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/libfontlist/include
 find_package(FLTK REQUIRED)
 find_package(jsoncpp REQUIRED)
 
-add_subdirectory(libfontlist)
-
 add_executable(ninixw-preferences ninixw-preferences.cc preferences.cc libfontlist)
 set_target_properties(ninixw-preferences PROPERTIES SUFFIX ".exe")
 target_compile_options(ninixw-preferences PUBLIC -O2 -Wall)
