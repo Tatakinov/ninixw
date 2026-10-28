@@ -1,0 +1,58 @@
+name: deploy sorakado-builtin.exe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    env:
+      ORT_VERSION: 1.31.1
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        submodules: recursive
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v3
+      with:
+        msbuild-architecture: x64
+    - name: Cache ONNX Runtime
+      id: cache-ort
+      uses: actions/cache@v6
+      with:
+        path: ${{ github.workspace }}/onnxruntime-win-x64
+        key: ort-win-x64-${{ env.ORT_VERSION }}
+    - name: Download and Extract ONNX Runtime
+      if: steps.cache-ort.outputs.cache-hit != 'true'
+      shell: powershell
+      run: |
+        $Url = "https://github.com/microsoft/onnxruntime/releases/download/v${{ env.ORT_VERSION }}/onnxruntime-win-x64-${{ env.ORT_VERSION }}.zip"
+        $ZipFile = "ort.zip"
+        
+        Write-Host "Downloading ONNX Runtime from $Url..."
+        Invoke-WebRequest -Uri $Url -OutFile $ZipFile
+        
+        Write-Host "Extracting archive..."
+        Expand-Archive -Path $ZipFile -DestinationPath ${{ github.workspace }}
+        Rename-Item -Path "${{ github.workspace }}\onnxruntime-win-x64-${env:ORT_VERSION}" -NewName "onnxruntime-win-x64"
+        Remove-Item $ZipFile
+    - name: Install Requirements
+      run: |
+          vcpkg install sdl3 sdl3-image[avif,jpeg,jxl,png,tiff,webp] sdl3-ttf jsoncpp fltk
+    - name: Build sorakado_builtin
+      env:
+          BUILD_ARCH: "x86-64-v3"
+          CL: "/utf-8 /DUNICODE /D_UNICODE"
+          CMAKE_TOOLCHAIN_FILE: C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+          VCPKG_ROOT: C:/vcpkg
+          ORT_ROOT_DIR: "${{ github.workspace }}/onnxruntime-win-x64"
+      run: |
+          pwsh -ExecutionPolicy Bypass -File ./build.ps1
+    - name: Upload artifact
+      uses: actions/upload-artifact@v7
+      with:
+          name: sorakado-builtin-windows
+          path: |
+              win
+              onnxruntime-win-x64/lib/*.dll
