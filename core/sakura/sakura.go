@@ -579,11 +579,22 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 	index := 0
 	in_q := false
 	in_a := false
+	bind_args := make([]string, 0)
+	f := func() {
+		if (len(bind_args) > 0) {
+			s.ao.Request("NOTIFY", "Bind", bind_args...)
+			bind_args = make([]string, 0)
+		}
+	}
 	for {
 		if index >= len(asts) {
+			f()
 			break
 		}
 		ast := asts[index]
+		if ast.Kind != sakurascript.PTag {
+			f()
+		}
 		index++
 		switch ast.Kind {
 		case sakurascript.PString:
@@ -697,7 +708,7 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 					} else if ast.Args[3] == "0" {
 						flag = "false"
 					}
-					s.ao.Request("NOTIFY", "Bind", strconv.Itoa(s.side), ast.Args[1], ast.Args[2], "script", flag)
+					bind_args = append(bind_args, strconv.Itoa(s.side), ast.Args[1], ast.Args[2], "script", flag)
 				default:
 				}
 			case `\&`:
