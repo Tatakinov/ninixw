@@ -13,6 +13,7 @@ import (
 	"golang.org/x/text/encoding/japanese"
 	"golang.org/x/text/transform"
 
+	"ninixw-core/ghost"
 	"ninixw-core/interfaces"
 	"ninixw-core/log"
 	"ninixw-core/path"
@@ -176,7 +177,7 @@ func (b *Baseware) InstallNar(filename string, s interfaces.ISakura) {
 			root = filepath.Join(root, dirs[0])
 		}
 	}
-	id, name, path, err := install(root, s, false)
+	id, name, p, err := install(root, s, false)
 	if err != nil {
 		s.SendEvent(structs.Event{
 			Method: "GET",
@@ -184,22 +185,35 @@ func (b *Baseware) InstallNar(filename string, s interfaces.ISakura) {
 			Event: "OnInstallFailure",
 			Reference: []string{ "unknown" },
 		})
-	} else {
+		return
+	}
+	g, err := ghost.NewGhost(p)
+	if err != nil {
 		s.SendEvent(structs.Event{
 			Method: "GET",
 			Option: make(map[string]struct{}),
-			Event: "OnInstallCompleteEX",
-			Reference: []string{ id, name, path },
-		}, structs.Event{
-			Method: "GET",
-			Option: make(map[string]struct{}),
-			Event: "OnInstallComplete",
-			Reference: []string{
-				strings.Split(id, "\x01")[0],
-				strings.Split(name, "\x01")[0],
-			},
+			Event: "OnInstallFailure",
+			Reference: []string{ "unknown" },
 		})
+		return
 	}
+	b.ghosts.Lock(func(m map[string]ghost.Ghost) {
+		m[g.Root] = g
+	})
+	s.SendEvent(structs.Event{
+		Method: "GET",
+		Option: make(map[string]struct{}),
+		Event: "OnInstallCompleteEX",
+		Reference: []string{ id, name, p },
+	}, structs.Event{
+		Method: "GET",
+		Option: make(map[string]struct{}),
+		Event: "OnInstallComplete",
+		Reference: []string{
+			strings.Split(id, "\x01")[0],
+			strings.Split(name, "\x01")[0],
+		},
+	})
 }
 
 func install(root string, s interfaces.ISakura, in bool) (string, string, string, error) {
