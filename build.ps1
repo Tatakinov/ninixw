@@ -6,8 +6,8 @@ mkdir win/internal/shm
 mkdir win/internal/sorakado/sorakado_builtin
 
 pushd core && go build -o ../win/ninixw.exe . && popd
-cmake -S . -B build_i686 -DONLY_FONTLIST=$OnlyFontList -DBUILD_PROXY="ON" -A Win32 && cmake --build build --config Release
-cmake -S . -B build_x86_64 -DONLY_FONTLIST=$OnlyFontList && cmake --build build --config Release
+cmake -S . -B build_i686 -DONLY_FONTLIST=$OnlyFontList -DBUILD_PROXY="ON" -A Win32 && cmake --build build_i686 --config Release
+cmake -S . -B build_x86_64 -DONLY_FONTLIST=$OnlyFontList && cmake --build build_x86_64 --config Release
 Copy-Item -Path build_x86_64/gui/Release/* -Destination win/internal/gui -Recurse
 Copy-Item -Path build_i686/proxy/Release/* -Destination win/internal/proxy -Recurse
 Copy-Item -Path build_x86_64/shm/Release/* -Destination win/internal/shm -Recurse
