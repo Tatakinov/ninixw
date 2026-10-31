@@ -12,7 +12,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-cmake -S . -B build && cmake --build build
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
 if [ $? -ne 0 ]; then
     echo "failed to build module"
     exit 1
