@@ -401,6 +401,8 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 			if len(req.Reference) == 0 {
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
 			}
+			s.parent.Add()
+			defer s.parent.Done()
 			s.SendEvent(structs.Event{
 				Method: "GET",
 				Option: make(map[string]struct{}),

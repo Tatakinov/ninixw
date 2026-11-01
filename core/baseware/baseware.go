@@ -495,3 +495,11 @@ func (b *Baseware) NotifyConfigurationChanged() {
 		}
 	})
 }
+
+func (b *Baseware) Add() {
+	b.wg.Add(1)
+}
+
+func (b *Baseware) Done() {
+	b.wg.Done()
+}

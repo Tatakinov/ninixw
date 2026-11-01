@@ -33,4 +33,6 @@ type IBaseware interface {
 	AppendScriptLog(kind string, data structs.LogData)
 	OpenPreferences()
 	NotifyConfigurationChanged()
+	Add()
+	Done()
 }
