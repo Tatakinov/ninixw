@@ -21,6 +21,7 @@ type Process struct {
 	cmd *exec.Cmd
 	send chan Data
 	cancel context.CancelFunc
+	quit chan error
 }
 
 func NewProcess(name string, args ...string) (Process, error) {
@@ -105,11 +106,20 @@ func NewProcess(name string, args ...string) (Process, error) {
 	if err != nil {
 		return Process{}, err
 	}
+	quit := make(chan error, 1)
+	go func() {
+		err := cmd.Wait()
+		if err != nil {
+			log.Println(err)
+		}
+		quit <- err
+	}()
 	return Process{
 		alive: make(chan struct{}),
 		cmd: cmd,
 		send: send,
 		cancel: cancel,
+		quit: quit,
 	}, nil
 }
 
@@ -126,16 +136,12 @@ func (p Process) Send(required bool, channel chan <- string, content string) {
 func (p Process) Stop() error {
 	close(p.alive)
 	close(p.send)
-	ch := make(chan error)
-	go func() {
-		ch <- p.cmd.Wait()
-	}()
 	select {
-	case err := <- ch:
+	case err := <- p.quit:
 		return err
 	case <- time.After(1 * time.Second):
 		p.cancel()
-		err := <- ch
+		err := <- p.quit
 		return err
 	}
 }
