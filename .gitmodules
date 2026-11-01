@@ -1,3 +1,12 @@
 [submodule "sorakado"]
 	path = sorakado
 	url = https://github.com/Tatakinov/sorakado_builtin
+[submodule "shiori/satori"]
+	path = shiori/satori
+	url = https://github.com/ukatech/satoriya-shiori
+[submodule "shiori/yaya"]
+	path = shiori/yaya
+	url = https://github.com/YAYA-shiori/yaya-shiori
+[submodule "shiori/kawari"]
+	path = shiori/kawari
+	url = https://github.com/ukatech/kawari
