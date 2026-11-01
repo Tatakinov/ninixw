@@ -2,10 +2,12 @@ package baseware
 
 import (
 	"archive/zip"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"uuid"
@@ -200,6 +202,83 @@ func (b *Baseware) InstallNar(filename string, s interfaces.IInstallObserver) {
 	b.ghosts.Lock(func(m map[string]ghost.Ghost) {
 		m[g.Root] = g
 	})
+	readme := "readme.txt"
+	if g.Descript["readme"] != "" {
+		readme = g.Descript["readme"]
+	}
+	charset := "Shift_JIS"
+	if g.Descript["readme.charset"] != "" {
+		charset = g.Descript["readme.charset"]
+	}
+	if filepath.IsLocal(readme) {
+		// FIXME LANGを使うべきか、Shift_JIS(CP932)にすべきか。
+		_, err := os.Stat(filepath.Join(g.Root, readme))
+		if err != nil {
+			e, err := os.ReadDir(g.Root)
+			if err != nil {
+				log.Println(err)
+				readme = ""
+			}
+			found := false
+			for _, entry := range e {
+				if entry.IsDir() {
+					continue
+				}
+				if strings.ToLower(readme) == strings.ToLower(entry.Name()) {
+					found = true
+					readme = entry.Name()
+					break
+				}
+			}
+			if !found {
+				readme = ""
+			}
+		}
+	} else {
+		log.Println(fmt.Sprintf("traversal: %s", readme))
+		readme = ""
+	}
+	if readme != "" {
+		bytes, err := os.ReadFile(filepath.Join(g.Root, readme))
+		if err == nil {
+			b.wg_gui.Add(1)
+			go func() {
+				defer b.wg_gui.Done()
+				ctx, cancel := context.WithCancel(context.Background())
+				cmd := exec.CommandContext(ctx, filepath.Join(path.GuiDir(), "ninixw-readme.exe"), charset)
+				w, err := cmd.StdinPipe()
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				go func() {
+					defer w.Close()
+					w.Write(bytes)
+				}()
+				err = cmd.Start()
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				ch := make(chan error)
+				go func() {
+					ch <- cmd.Wait()
+				}()
+				select {
+				case <- b.quit:
+					cancel()
+					err := <- ch
+					if err != nil {
+						log.Println(err)
+					}
+				case err := <- ch:
+					if err != nil {
+						log.Println(err)
+					}
+				}
+			}()
+		}
+	}
 	s.SendEvent(structs.Event{
 		Method: "GET",
 		Option: make(map[string]struct{}),
