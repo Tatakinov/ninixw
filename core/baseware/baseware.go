@@ -40,6 +40,18 @@ type Baseware struct {
 }
 
 func NewBaseware() *Baseware {
+	for _, v := range []string{
+		path.GhostDir(),
+		path.BalloonDir(),
+		path.PluginDir(),
+		path.SockDir(),
+		path.TmpDir(),
+	} {
+		err := os.MkdirAll(v, 0755)
+		if err != nil {
+			panic(err)
+		}
+	}
 	entries, err := os.ReadDir(path.SockDir())
 	if err != nil {
 		panic(err)
@@ -149,7 +161,10 @@ func (b *Baseware) Run(ghost_name string) {
 		i *= len(m)
 	})
 	if i == 0 {
-		panic("no ghost or no balloon")
+		fmt.Println("")
+		fmt.Println("no ghost or no balloon")
+		fmt.Println("please run `ninixw --install /path/to/ghost_or_balloon.nar`")
+		return
 	} else {
 		if ghost_name == "" {
 			b.preferences.RLock(func(m map[string]string) {
