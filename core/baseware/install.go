@@ -179,7 +179,7 @@ func (b *Baseware) InstallNar(filename string, s interfaces.IInstallObserver, in
 			root = filepath.Join(root, dirs[0])
 		}
 	}
-	id, name, p, err := install(root, s, false)
+	id, name, p, err := b.install(root, s, false, install_only)
 	if err != nil {
 		s.SendEvent(structs.Event{
 			Method: "GET",
@@ -188,99 +188,6 @@ func (b *Baseware) InstallNar(filename string, s interfaces.IInstallObserver, in
 			Reference: []string{ "unknown" },
 		})
 		return
-	}
-	g, err := ghost.NewGhost(p)
-	if err != nil {
-		s.SendEvent(structs.Event{
-			Method: "GET",
-			Option: make(map[string]struct{}),
-			Event: "OnInstallFailure",
-			Reference: []string{ "unknown" },
-		})
-		return
-	}
-	b.ghosts.Lock(func(m map[string]ghost.Ghost) {
-		m[g.Root] = g
-	})
-	readme := "readme.txt"
-	if g.Descript["readme"] != "" {
-		readme = g.Descript["readme"]
-	}
-	charset := "Shift_JIS"
-	if g.Descript["readme.charset"] != "" {
-		charset = g.Descript["readme.charset"]
-	}
-	if filepath.IsLocal(readme) {
-		// FIXME LANGを使うべきか、Shift_JIS(CP932)にすべきか。
-		_, err := os.Stat(filepath.Join(g.Root, readme))
-		if err != nil {
-			e, err := os.ReadDir(g.Root)
-			if err != nil {
-				log.Println(err)
-				readme = ""
-			}
-			found := false
-			for _, entry := range e {
-				if entry.IsDir() {
-					continue
-				}
-				if strings.ToLower(readme) == strings.ToLower(entry.Name()) {
-					found = true
-					readme = entry.Name()
-					break
-				}
-			}
-			if !found {
-				readme = ""
-			}
-		}
-	} else {
-		log.Println(fmt.Sprintf("traversal: %s", readme))
-		readme = ""
-	}
-	if install_only {
-		readme = ""
-	}
-	if readme != "" {
-		bytes, err := os.ReadFile(filepath.Join(g.Root, readme))
-		if err == nil {
-			b.wg_gui.Add(1)
-			go func() {
-				defer b.wg_gui.Done()
-				ctx, cancel := context.WithCancel(context.Background())
-				cmd := exec.CommandContext(ctx, filepath.Join(path.GuiDir(), "ninixw-readme.exe"), charset)
-				w, err := cmd.StdinPipe()
-				if err != nil {
-					log.Println(err)
-					return
-				}
-				go func() {
-					defer w.Close()
-					w.Write(bytes)
-				}()
-				err = cmd.Start()
-				if err != nil {
-					log.Println(err)
-					return
-				}
-				ch := make(chan error)
-				go func() {
-					ch <- cmd.Wait()
-				}()
-				select {
-				case <- b.quit:
-					cancel()
-					err := <- ch
-					if err != nil {
-						log.Println(err)
-					}
-				case err := <- ch:
-					if err != nil {
-						log.Println(err)
-					}
-				}
-			}()
-		}
 	}
 	s.SendEvent(structs.Event{
 		Method: "GET",
@@ -298,7 +205,7 @@ func (b *Baseware) InstallNar(filename string, s interfaces.IInstallObserver, in
 	})
 }
 
-func install(root string, s interfaces.IInstallObserver, in bool) (string, string, string, error) {
+func (b *Baseware) install(root string, s interfaces.IInstallObserver, in bool, install_only bool) (string, string, string, error) {
 	m, err := utils.ReadSetting(filepath.Join(root, "install.txt"))
 	if err != nil {
 		log.Println(err)
@@ -340,6 +247,16 @@ func install(root string, s interfaces.IInstallObserver, in bool) (string, strin
 			if with_balloon {
 				// TODO stub
 			} else {
+				g, err := ghost.NewGhost(dst)
+				if err != nil {
+					return "", "", "", err
+				}
+				b.ghosts.Lock(func(m map[string]ghost.Ghost) {
+					m[g.Root] = g
+				})
+				if !install_only {
+					b.showReadMe(g.Root, g)
+				}
 				s.SendEvent(structs.Event{
 					Method: "GET",
 					Option: make(map[string]struct{}),
@@ -364,6 +281,49 @@ func install(root string, s interfaces.IInstallObserver, in bool) (string, strin
 		}
 	case "shell":
 		// TODO stub
+	case "balloon":
+		dir := m["directory"]
+		dst := filepath.Join(path.BalloonDir(), dir)
+		if confirm(dst) {
+			err := utils.CopyAll(dst, root)
+			if err != nil {
+				log.Println(err)
+				return "", "", "", err
+			}
+			if in {
+				break
+			}
+			balloon, err := ghost.NewBalloon(dst)
+			if err != nil {
+				return "", "", "", err
+			}
+			b.balloons.Lock(func(m map[string]ghost.Balloon) {
+				m[balloon.Path] = balloon
+			})
+			if !install_only {
+				b.showReadMe(balloon.Path, balloon)
+			}
+			s.SendEvent(structs.Event{
+				Method: "GET",
+				Option: make(map[string]struct{}),
+				Event: "OnInstallCompleteEx",
+				Reference: []string{ "ghost", m["name"], dst },
+			}, structs.Event{
+				Method: "GET",
+				Option: make(map[string]struct{}),
+				Event: "OnInstallComplete",
+				Reference: []string{ "ghost", m["name"] },
+			})
+			return "balloon", m["name"], dst, nil
+		} else {
+			s.SendEvent(structs.Event{
+				Method: "GET",
+				Option: make(map[string]struct{}),
+				Event: "OnInstallFailure",
+				Reference: []string{ "artificial" },
+			})
+			return "", "", "", errors.New("cancel installation")
+		}
 	case "supplement":
 		// TODO stub
 	case "package":
@@ -386,4 +346,85 @@ func confirm(path string) bool {
 	}
 	// TODO yes-no
 	return false
+}
+
+func (b *Baseware) showReadMe(root string, info interfaces.IBaseInfo) error {
+	readme := "readme.txt"
+	if info.Get("readme") != "" {
+		readme = info.Get("readme")
+	}
+	charset := "Shift_JIS"
+	if info.Get("readme.charset") != "" {
+		charset = info.Get("readme.charset")
+	}
+	if !filepath.IsLocal(readme) {
+		log.Println(fmt.Sprintf("traversal: %s", readme))
+		return errors.New("traversal")
+	}
+	// FIXME LANGを使うべきか、Shift_JIS(CP932)にすべきか。
+	_, err := os.Stat(filepath.Join(root, readme))
+	if err != nil {
+		e, err := os.ReadDir(root)
+		if err != nil {
+			log.Println(err)
+			readme = ""
+		}
+		found := false
+		for _, entry := range e {
+			if entry.IsDir() {
+				continue
+			}
+			if strings.ToLower(readme) == strings.ToLower(entry.Name()) {
+				found = true
+				readme = entry.Name()
+				break
+			}
+		}
+		if !found {
+			readme = ""
+		}
+	}
+	if readme == "" {
+		return errors.New("readme not found")
+	}
+	bytes, err := os.ReadFile(filepath.Join(root, readme))
+	if err == nil {
+		b.wg_gui.Add(1)
+		go func() {
+			defer b.wg_gui.Done()
+			ctx, cancel := context.WithCancel(context.Background())
+			cmd := exec.CommandContext(ctx, filepath.Join(path.GuiDir(), "ninixw-readme.exe"), charset)
+			w, err := cmd.StdinPipe()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			go func() {
+				defer w.Close()
+				w.Write(bytes)
+			}()
+			err = cmd.Start()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			ch := make(chan error)
+			go func() {
+				ch <- cmd.Wait()
+			}()
+			select {
+			case <- b.quit:
+				cancel()
+				err := <- ch
+				if err != nil {
+					log.Println(err)
+				}
+			case err := <- ch:
+				if err != nil {
+					log.Println(err)
+				}
+			}
+		}()
+	}
+	return nil
 }

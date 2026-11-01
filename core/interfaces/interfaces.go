@@ -5,6 +5,10 @@ import (
 	"ninixw-core/structs"
 )
 
+type IBaseInfo interface {
+	Get(key string) string
+}
+
 type ISakuraInfo interface {
 	GhostName() string
 	GhostPath() string

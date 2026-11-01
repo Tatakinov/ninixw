@@ -5,3 +5,7 @@ type baseInfo struct {
 	Path string
 	Descript map[string]string
 }
+
+func (b baseInfo) Get(key string) string {
+	return b.Descript[key]
+}
