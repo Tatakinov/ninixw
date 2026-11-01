@@ -14,20 +14,7 @@ Nin'i for X/Wayland/Windows
 
 Required(Linux):
 
-- go (core)
-- cmake (gui, proxy, shm, sorakado)
-- libffi (proxy)
-- fltk1.3 (gui)
-- SDL3 (sorakado)
-- SDL3-image (sorakado)
-- SDL3-ttf (sorakado)
-- jsoncpp (sorakado)
-- fontconfig (sorakado)
-- wayland-client (sorakado)
-
-Required(Windows):
-
-- go (core)
+- go >= 1.27 (core)
 - C++ compiler (gui, proxy, shm, sorakado, shiori)
 - cmake (gui, proxy, shm, sorakado)
 - libffi (proxy)
@@ -35,8 +22,20 @@ Required(Windows):
 - SDL3 (sorakado)
 - SDL3-image (sorakado)
 - SDL3-ttf (sorakado)
-- jsoncpp (sorakado)
-- openssl (shiori/aosora)
+- jsoncpp (gui, sorakado)
+- fontconfig (sorakado)
+- wayland-client (sorakado)
+
+Required(Windows):
+
+- go >= 1.27 (core)
+- C++ compiler (gui, proxy, shm, sorakado)
+- cmake (gui, proxy, shm, sorakado)
+- fltk1.3 (gui)
+- SDL3 (sorakado)
+- SDL3-image (sorakado)
+- SDL3-ttf (sorakado)
+- jsoncpp (gui, sorakado)
 
 Optional(Linux/Windows):
 
@@ -50,16 +49,21 @@ Optional(Linux/Windows):
 $ git clone --recursive https://github.com/Tatakinov/ninixw
 $ cd ninixw
 $ ./build.sh
-$ cp ninixw /opt/ninixw
+# cp -r ninixw /opt/ninixw
 ```
 
 ### Windows
 
-*stub*
+Download zip from Release
 
-## Note
+or
 
-Linuxでのみ動作確認しています。Windowsは多分動かない。
+```
+> git clone --recursive https://github.com/Tatakinov/ninixw
+> cd ninixw
+> ./build.ps1
+> cp win /path/to/ninixw
+```
 
 ## LICENSE
 
