@@ -31,7 +31,8 @@ type Baseware struct {
 	sakuras with_mutex.WithMutex[string, *sakura.Sakura]
 	preferences with_mutex.WithMutex[string, string]
 	wg sync.WaitGroup
-	channel chan string
+	wg_gui sync.WaitGroup
+	quit chan struct{}
 	uuids with_mutex.WithMutex[string, struct{}]
 	installs with_mutex.WithMutex[string, struct{}]
 	scriptlogProcess *scriptlog
@@ -53,7 +54,8 @@ func NewBaseware() *Baseware {
 		sakuras: with_mutex.NewWithMutex[string, *sakura.Sakura](),
 		preferences: with_mutex.NewWithMutex[string, string](),
 		wg: sync.WaitGroup{},
-		channel: make(chan string),
+		wg_gui: sync.WaitGroup{},
+		quit: make(chan struct{}),
 		uuids: with_mutex.NewWithMutex[string, struct{}](),
 		installs: with_mutex.NewWithMutex[string, struct{}](),
 		scriptlogProcess: newScriptlog(),
@@ -189,9 +191,8 @@ func (b *Baseware) Run(ghost_name string) {
 	if err != nil {
 		log.Println(err)
 	}
-	quit := make(chan struct{})
 	go func() {
-		<- quit
+		<- b.quit
 		server.Close()
 		os.Remove(p)
 	}()
@@ -250,11 +251,12 @@ func (b *Baseware) Run(ghost_name string) {
 		}
 	}()
 	b.wg.Wait()
-	close(quit)
+	close(b.quit)
+	b.wg_gui.Wait()
 	b.savePreferences()
 }
 
-func (b *Baseware) StartSakura(name string, reason string, from interfaces.ISakura) error {
+func (b *Baseware) StartSakura(name string, reason string, from interfaces.ISakuraInfo) error {
 	var g ghost.Ghost
 	var balloon ghost.Balloon
 	ok := false

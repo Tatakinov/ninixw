@@ -8,17 +8,7 @@ import (
 	"ninixw-core/utils"
 )
 
-type baseInfo struct {
-	Key string
-	Path string
-	Descript map[string]string
-}
-
 type Shell struct {
-	baseInfo
-}
-
-type Balloon struct {
 	baseInfo
 }
 
@@ -47,12 +37,4 @@ func NewGhost(ghost_path string) (Ghost, error) {
 		return Ghost {}, errors.New("no valid shell")
 	}
 	return Ghost { baseInfo: baseInfo{ Key: filepath.Base(ghost_path), Path: filepath.Join(ghost_path, "ghost", "master"), Descript: desc }, Root: ghost_path, Shells: shells }, nil
-}
-
-func NewBalloon(p string) (Balloon, error) {
-	desc, err := utils.ReadSetting(filepath.Join(p, "descript.txt"))
-	if err != nil {
-		return Balloon{}, err
-	}
-	return Balloon{ baseInfo: baseInfo{ Key: filepath.Base(p), Path: p, Descript: desc } }, nil
 }

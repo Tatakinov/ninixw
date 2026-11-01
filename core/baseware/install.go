@@ -21,7 +21,7 @@ import (
 	"ninixw-core/utils"
 )
 
-func (b *Baseware) InstallNar(filename string, s interfaces.ISakura) {
+func (b *Baseware) InstallNar(filename string, s interfaces.IInstallObserver) {
 	s.SendEvent(structs.Event{
 		Method: "GET",
 		Option: make(map[string]struct{}),
@@ -216,7 +216,7 @@ func (b *Baseware) InstallNar(filename string, s interfaces.ISakura) {
 	})
 }
 
-func install(root string, s interfaces.ISakura, in bool) (string, string, string, error) {
+func install(root string, s interfaces.IInstallObserver, in bool) (string, string, string, error) {
 	m, err := utils.ReadSetting(filepath.Join(root, "install.txt"))
 	if err != nil {
 		log.Println(err)

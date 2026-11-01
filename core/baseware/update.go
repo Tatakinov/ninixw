@@ -32,7 +32,7 @@ type updateFile struct {
 	Date int64
 }
 
-func (b *Baseware) UpdateGhost(url string, root string, s interfaces.ISakura, reason string) {
+func (b *Baseware) UpdateGhost(url string, root string, s interfaces.IUpdateObserver, reason string) {
 	running := false
 	b.installs.Lock(func(m map[string]struct{}) {
 		_, ok := m[s.GhostPath()]
