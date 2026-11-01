@@ -180,8 +180,16 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 	switch req.Method {
 	case "NOTIFY", "SEND":
 		event, _ := req.Header["Event"]
+		option := fmt.Sprintf(",%s,", req.Header["Option"])
+		o := make(map[string]struct{})
+		for _, v := range []string{ "nodescript", "notranslate", "hideon204" } {
+			if !strings.Contains(option, fmt.Sprintf(",%s,", v)) {
+				continue
+			}
+			o[v] = struct{}{}
+		}
 		if event != "" {
-			script := s.SendEvent(structs.Event{ Method: "GET", Option: make(map[string]struct{}), Event: event, Reference: req.Reference })
+			script := s.SendEvent(structs.Event{ Method: "GET", Option: o, Event: event, Reference: req.Reference })
 			if script != "" {
 				header := sstp.NewSSTPHeader(req.KeepAlive())
 				header["Script"] = script
@@ -1062,6 +1070,12 @@ func (s *Sakura) SendEvent(event ...structs.Event) string {
 					Script: v,
 				})
 			}
+		}
+	} else {
+		_, ok := e.Option["hideon204"]
+		if ok {
+			s.ai.Request("NOTIFY", "HideAll")
+			s.ai.Request("NOTIFY", "ClearTextAll")
 		}
 	}
 	switch e.Event {
