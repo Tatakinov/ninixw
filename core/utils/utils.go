@@ -81,11 +81,6 @@ func CopyAll(dst string, src string) error {
 		if e.IsDir() {
 			return nil
 		}
-		err = os.MkdirAll(filepath.Dir(p), 0755)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
 		i, err := os.Open(p)
 		if err != nil {
 			log.Println(err)
@@ -98,6 +93,11 @@ func CopyAll(dst string, src string) error {
 			return err
 		}
 		op := filepath.Join(dst, rel)
+		err = os.MkdirAll(filepath.Dir(op), 0755)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
 		o, err := os.OpenFile(op, os.O_RDWR | os.O_CREATE | os.O_TRUNC, 0644)
 		if err != nil {
 			log.Println(err)
