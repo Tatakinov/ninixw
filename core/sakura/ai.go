@@ -21,6 +21,7 @@ func newAi(balloon ghost.Balloon) (ai, error) {
 	}
 	dir := path.SorakadoStem(exe)
 	s := []string{
+		balloon.Path,
 		path.AiDir(),
 		path.SorakadoDir(),
 		path.ExecutableDir(),

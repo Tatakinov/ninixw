@@ -21,6 +21,7 @@ func newAo(shell ghost.Shell) (ao, error) {
 	}
 	dir := path.SorakadoStem(exe)
 	s := []string{
+		shell.Path,
 		path.AoDir(),
 		path.SorakadoDir(),
 		path.ExecutableDir(),
