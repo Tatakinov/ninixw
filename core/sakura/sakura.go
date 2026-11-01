@@ -362,7 +362,7 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 			for i, m := range mimes {
 				switch m {
 				case "application/zip":
-					s.parent.InstallNar(req.Reference[i + 1], s)
+					s.parent.InstallNar(req.Reference[i + 1], s, false)
 				default:
 				}
 			}

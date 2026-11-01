@@ -35,7 +35,7 @@ type IBaseware interface {
 	GetBalloon(b string) (ghost.Balloon, error)
 	GetPreferences(s string) (string, bool)
 	SetPreferences(k string, v string)
-	InstallNar(f string, s IInstallObserver)
+	InstallNar(f string, s IInstallObserver, install_only bool)
 	UpdateGhost(url string, root string, s IUpdateObserver, reason string)
 	OpenScriptLog()
 	AppendScriptLog(kind string, data structs.LogData)

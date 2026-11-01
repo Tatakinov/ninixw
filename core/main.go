@@ -17,7 +17,9 @@ import (
 )
 
 func main() {
-	ghost_name := flag.String("ghost", "", "ghost name")
+	filename := flag.String("install", "", "nar filename")
+	update_ghost_name := flag.String("update", "", "update ghost name")
+	call_ghost_name := flag.String("ghost", "", "ghost name")
 	flag.Parse()
 	// shm
 	shm_exe := filepath.Join(path.ShmDir(), "ninixw-shm.exe")
@@ -34,17 +36,29 @@ func main() {
 			create_new = true
 		} else {
 			defer conn.Close()
-			if *ghost_name != "" {
+			if *call_ghost_name != "" {
 				w := bufio.NewWriter(conn)
-				fmt.Fprintln(w, fmt.Sprintf("CallGhost:%s", *ghost_name))
+				fmt.Fprintln(w, fmt.Sprintf("CallGhost:%s", *call_ghost_name))
 				w.Flush()
 			}
-			if *ghost_name == "" {
+			if *call_ghost_name == "" {
 				fmt.Println("ninixw is already running")
 			}
 			return
 		}
 	}
+
+	baseware := baseware.NewBaseware()
+	baseware.Load()
+
+	if *filename != "" {
+		baseware.InstallNar(*filename, installer{}, true)
+		return
+	}
+	if *update_ghost_name != "" {
+		return
+	}
+
 	args := make([]string, 1)
 	if create_new {
 		args = append(args, "-n")
@@ -59,9 +73,7 @@ func main() {
 	}
 	shm_cmd.Start()
 
-	baseware := baseware.NewBaseware()
-	baseware.Load()
-	baseware.Run(*ghost_name)
+	baseware.Run(*call_ghost_name)
 
 	shm_write.Close()
 	shm_ch := make(chan error)

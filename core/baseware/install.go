@@ -23,7 +23,7 @@ import (
 	"ninixw-core/utils"
 )
 
-func (b *Baseware) InstallNar(filename string, s interfaces.IInstallObserver) {
+func (b *Baseware) InstallNar(filename string, s interfaces.IInstallObserver, install_only bool) {
 	s.SendEvent(structs.Event{
 		Method: "GET",
 		Option: make(map[string]struct{}),
@@ -236,6 +236,9 @@ func (b *Baseware) InstallNar(filename string, s interfaces.IInstallObserver) {
 		}
 	} else {
 		log.Println(fmt.Sprintf("traversal: %s", readme))
+		readme = ""
+	}
+	if install_only {
 		readme = ""
 	}
 	if readme != "" {
