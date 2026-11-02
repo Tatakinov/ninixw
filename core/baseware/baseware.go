@@ -180,9 +180,9 @@ func (b *Baseware) Run(ghost_name string) {
 				return
 			}
 			ghost_name = filepath.Base(ghost_name)
-			for k, _ := range m {
+			for k, v := range m {
 				name := filepath.Base(k)
-				if ghost_name == name {
+				if ghost_name == name || ghost_name == v.Descript["name"] {
 					ghost_name = k
 					ok = true
 					break
@@ -191,8 +191,10 @@ func (b *Baseware) Run(ghost_name string) {
 			if ok {
 				return
 			}
-			for k, _ := range m {
+			fmt.Println(fmt.Sprintf("ghost: %s not found", ghost_name))
+			for k, v := range m {
 				ghost_name = k
+				fmt.Println(fmt.Sprintf("call %s instead", v.Descript["name"]))
 				break
 			}
 		})
