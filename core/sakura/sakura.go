@@ -438,6 +438,14 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 			if err != nil {
 				log.Println(err)
 			}
+		case "ChangeLanguage":
+			if !s.fromAo(req) {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			if len(req.Reference) == 0 {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			s.parent.SetPreferences("language", req.Reference[0])
 		case "CloseGhost":
 			s.SendEvent(structs.Event{
 				Method: "GET",
@@ -1102,7 +1110,7 @@ func (s *Sakura) openMenu(from string) {
 	}
 	menu := make([]MenuItem, 0)
 	side := toSide(n)
-	res, err := s.shiori.Request("GET", side + ".portalsites")
+	res, err := s.shiori.Request("GET", side + ".recommendsites")
 	if err != nil {
 		log.Println(err)
 		return
@@ -1121,12 +1129,23 @@ func (s *Sakura) openMenu(from string) {
 			Args: slice[1:],
 		})
 	}
+	res, err = s.shiori.Request("GET", side + ".recommendbuttoncaption")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	caption := s.parent.GetText("おすすめ")
+	v, ok := res.Header["Value"]
+	if ok {
+		caption = v
+	}
 	menu = append(menu, MenuItem{
 		Type: "submenu",
-		Caption: "portal",
+		Caption: caption,
+		Valid: true,
 		List: submenu,
 	})
-	res, err = s.shiori.Request("GET", side + ".recommendsites")
+	res, err = s.shiori.Request("GET", side + ".portalsites")
 	if err != nil {
 		log.Println(err)
 		return
@@ -1145,9 +1164,19 @@ func (s *Sakura) openMenu(from string) {
 			Args: slice[1:],
 		})
 	}
+	res, err = s.shiori.Request("GET", side + ".portalbuttoncaption")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	caption = s.parent.GetText("ポータルサイト")
+	v, ok = res.Header["Value"]
+	if ok {
+		caption = v
+	}
 	menu = append(menu, MenuItem{
 		Type: "submenu",
-		Caption: "recommend",
+		Caption: caption,
 		Valid: true,
 		List: submenu,
 	})
@@ -1163,31 +1192,52 @@ func (s *Sakura) openMenu(from string) {
 	if !strings.HasPrefix(homeurl, "http://") && strings.HasPrefix(homeurl, "https://") {
 		homeurl = ""
 	}
+	res, err = s.shiori.Request("GET", "updatebuttoncaption")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	caption = s.parent.GetText("ネットワーク更新")
+	v, ok = res.Header["Value"]
+	if ok {
+		caption = v
+	}
 	menu = append(menu, MenuItem{
 		Type: "item",
-		Caption: "update",
+		Caption: caption,
 		Valid: homeurl != "",
 		Command: "UpdateGhost",
 	})
+	res, err = s.shiori.Request("GET", "vanishbuttoncaption")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	caption = s.parent.GetText("アンインストール")
+	v, ok = res.Header["Value"]
+	if ok {
+		caption = v
+	}
 	menu = append(menu, MenuItem{
 		Type: "item",
-		Caption: "vanish",
+		Caption: caption,
+		Valid: true,
 		Command: "VanishGhost",
 	})
 	menu = append(menu, MenuItem{
 		Type: "submenu",
-		Caption: "function",
+		Caption: s.parent.GetText("機能"),
 		Valid: true,
 		List: []MenuItem{
 			MenuItem{
 				Type: "item",
-				Caption: "Script Inputbox",
+				Caption: s.parent.GetText("スクリプト入力"),
 				Valid: true,
 				Command: "OpenScriptInputbox",
 			},
 			MenuItem{
 				Type: "item",
-				Caption: "Script Log",
+				Caption: s.parent.GetText("スクリプトログ"),
 				Valid: true,
 				Command: "OpenScriptLog",
 			},
@@ -1195,7 +1245,7 @@ func (s *Sakura) openMenu(from string) {
 	})
 	menu = append(menu, MenuItem{
 		Type: "submenu",
-		Caption: "preferences",
+		Caption: s.parent.GetText("設定"),
 		Valid: true,
 		List: []MenuItem{
 			MenuItem{
@@ -1221,7 +1271,7 @@ func (s *Sakura) openMenu(from string) {
 	}
 	menu = append(menu, MenuItem{
 		Type: "submenu",
-		Caption: "switch",
+		Caption: s.parent.GetText("ゴースト切り替え"),
 		Valid: true,
 		List: l,
 	})
@@ -1238,7 +1288,7 @@ func (s *Sakura) openMenu(from string) {
 	}
 	menu = append(menu, MenuItem{
 		Type: "submenu",
-		Caption: "call",
+		Caption: s.parent.GetText("他のゴーストを呼ぶ"),
 		Valid: true,
 		List: l,
 	})
@@ -1265,13 +1315,13 @@ func (s *Sakura) openMenu(from string) {
 	}
 	menu = append(menu, MenuItem{
 		Type: "submenu",
-		Caption: "shell",
+		Caption: s.parent.GetText("シェル"),
 		Valid: true,
 		List: l,
 	})
 	menu = append(menu, MenuItem{
 		Type: "dressup",
-		Caption: "costume",
+		Caption: s.parent.GetText("着せ替え"),
 		Valid: true,
 		List: []MenuItem{},
 	})
@@ -1288,32 +1338,53 @@ func (s *Sakura) openMenu(from string) {
 	}
 	menu = append(menu, MenuItem{
 		Type: "submenu",
-		Caption: "balloon",
+		Caption: s.parent.GetText("バルーン"),
 		Valid: true,
 		List: l,
 	})
 	menu = append(menu, MenuItem{
 		Type: "submenu",
-		Caption: "info",
+		Caption: s.parent.GetText("情報"),
 		Valid: true,
 		List: []MenuItem{
 			MenuItem{
 				Type: "item",
-				Caption: "ベースウェアについて",
+				Caption: s.parent.GetText("ベースウェアについて"),
 				Valid: true,
 				Command: "ShowBasewareVersion",
 			},
 		},
 	})
+	current_lang, ok := s.parent.GetPreferences("language")
+	if !ok {
+		current_lang = "日本語"
+	}
+	languages := []string{ "日本語", "English" }
+	l = make([]MenuItem, 0, len(languages))
+	for _, v := range languages {
+		l = append(l, MenuItem{
+			Type: "item",
+			Caption: v,
+			Valid: current_lang != v,
+			Command: "ChangeLanguage",
+			Args: []string{ v },
+		})
+	}
+	menu = append(menu, MenuItem{
+		Type: "submenu",
+		Caption: s.parent.GetText("Language"),
+		Valid: true,
+		List: l,
+	})
 	menu = append(menu, MenuItem{
 		Type: "item",
-		Caption: "close",
+		Caption: s.parent.GetText("終了"),
 		Valid: true,
 		Command: "CloseGhost",
 	})
 	menu = append(menu, MenuItem{
 		Type: "item",
-		Caption: "close all",
+		Caption: s.parent.GetText("全て終了"),
 		Valid: true,
 		Command: "CloseAllGhost",
 	})

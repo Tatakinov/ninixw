@@ -1,0 +1,23 @@
+{
+    "language": "English",
+    "map": {
+        "おすすめ": "Recommend",
+        "ポータルサイト": "Portal site",
+        "ネットワーク更新": "Network update",
+        "アンインストール": "Uninstall",
+        "機能": "Function",
+        "設定": "Preferences",
+        "ゴースト切り替え": "Change ghost",
+        "他のゴーストを呼ぶ": "Call another ghost",
+        "シェル": "Shell",
+        "着せ替え": "Dress up",
+        "バルーン": "Balloon",
+        "情報": "Information",
+        "Language": "Language",
+        "終了": "Close ghost",
+        "全て終了": "Close all ghost",
+        "スクリプト入力": "Input script",
+        "スクリプトログ": "Script log",
+        "ベースウェアについて": "About baseware"
+    }
+}

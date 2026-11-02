@@ -9,6 +9,10 @@ func libexecDir() string {
 	return filepath.Join(ExecutableDir(), "../libexec")
 }
 
+func localeDir() string {
+	return filepath.Join(ExecutableDir(), "../locale")
+}
+
 func HomeDir() string {
 	dir, err := os.UserHomeDir()
 	if err != nil {
@@ -65,6 +69,14 @@ func GuiDir() string {
 	path := os.Getenv("NINIXW_LIBEXEC_PATH")
 	if path == "" {
 		return libexecDir()
+	}
+	return path
+}
+
+func LocaleDir() string {
+	path := os.Getenv("NINIXW_LOCALE_PATH")
+	if path == "" {
+		return localeDir()
 	}
 	return path
 }

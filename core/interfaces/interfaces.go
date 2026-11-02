@@ -47,4 +47,5 @@ type IBaseware interface {
 	NotifyConfigurationChanged()
 	Add()
 	Done()
+	GetText(key string) string
 }

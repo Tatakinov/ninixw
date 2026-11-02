@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"cmp"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -30,6 +31,7 @@ type Baseware struct {
 	balloons with_mutex.WithMutex[string, ghost.Balloon]
 	sakuras with_mutex.WithMutex[string, *sakura.Sakura]
 	preferences with_mutex.WithMutex[string, string]
+	locales with_mutex.WithMutex[string, map[string]string]
 	wg sync.WaitGroup
 	wg_gui sync.WaitGroup
 	quit chan struct{}
@@ -46,6 +48,7 @@ func NewBaseware() *Baseware {
 		path.PluginDir(),
 		path.SockDir(),
 		path.TmpDir(),
+		path.LocaleDir(),
 	} {
 		err := os.MkdirAll(v, 0755)
 		if err != nil {
@@ -65,6 +68,7 @@ func NewBaseware() *Baseware {
 		balloons: with_mutex.NewWithMutex[string, ghost.Balloon](),
 		sakuras: with_mutex.NewWithMutex[string, *sakura.Sakura](),
 		preferences: with_mutex.NewWithMutex[string, string](),
+		locales: with_mutex.NewWithMutex[string, map[string]string](),
 		wg: sync.WaitGroup{},
 		wg_gui: sync.WaitGroup{},
 		quit: make(chan struct{}),
@@ -77,6 +81,28 @@ func NewBaseware() *Baseware {
 
 func (b *Baseware) Load() {
 	fmt.Println("Loading...")
+	entries, err := os.ReadDir(path.LocaleDir())
+	if err != nil {
+		panic(err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		bytes, err := os.ReadFile(filepath.Join(path.LocaleDir(), entry.Name()))
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		var catalog catalog
+		err = json.Unmarshal(bytes, &catalog)
+		if err != nil {
+			log.Println(err)
+		}
+		b.locales.Lock(func(m map[string]map[string]string) {
+			m[catalog.Language] = catalog.Map
+		})
+	}
 	b.loadPreferences()
 	dirs := path.Dirs(path.GhostDir())
 	sum := 0
@@ -513,6 +539,26 @@ func (b *Baseware) NotifyConfigurationChanged() {
 			v.OnConfigurationChanged()
 		}
 	})
+}
+
+func (b *Baseware) GetText(key string) string {
+	ret := key
+	lang, ok := b.GetPreferences("language")
+	if !ok {
+		lang = "日本語"
+	}
+	b.locales.RLock(func(m map[string]map[string]string) {
+		v, ok := m[lang]
+		if !ok {
+			return
+		}
+		value, ok := v[key]
+		if !ok {
+			return
+		}
+		ret = value
+	})
+	return ret
 }
 
 func (b *Baseware) Add() {
