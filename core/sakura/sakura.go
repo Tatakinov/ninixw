@@ -486,10 +486,8 @@ func (s *Sakura) MainLoop() {
 	s.ai.Request("NOTIFY", "BasewareVersion", "ninixw", version.Version)
 	s.ai.Request("NOTIFY", "Endpoint", filepath.Join(path.SockDir(), s.uuid), s.uuid_ai)
 
-	// \0のインスタンスはCreateが呼ばれずに処理が行われる可能性があるため
-	// ここでCreateしておく
-	s.ao.Request("NOTIFY", "Create", strconv.Itoa(s.side))
-	s.ai.Request("NOTIFY", "Create", strconv.Itoa(s.side))
+	// 初期sideは0
+	s.changeSide(0)
 
 	go func () {
 		defer s.Stop()
@@ -525,9 +523,11 @@ func (s *Sakura) MainLoop() {
 						asts = tmp
 						// initialize
 						s.quick_section = false
-						s.side = 0
+						s.changeSide(0)
 						s.ai.Request("NOTIFY", "HideAll")
 						s.ai.Request("NOTIFY", "ClearTextAll")
+						s.ao.Request("NOTIFY", "OnScriptBegin")
+						s.ai.Request("NOTIFY", "OnScriptBegin")
 						s.balloon_timeout = kBalloonTimeout
 					}
 					timeout_ch = make(<- chan time.Time)
@@ -577,6 +577,8 @@ func (s *Sakura) MainLoop() {
 					if s.balloon_timeout > 0 {
 						timeout_ch = time.After(time.Duration(s.balloon_timeout) * time.Second)
 					}
+					s.ao.Request("NOTIFY", "OnScriptEnd")
+					s.ai.Request("NOTIFY", "OnScriptEnd")
 				}
 			}
 		}
@@ -728,16 +730,12 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 				if s.side == 0 {
 					continue
 				}
-				s.side = 0
-				s.ao.Request("NOTIFY", "Create", strconv.Itoa(s.side))
-				s.ai.Request("NOTIFY", "Create", strconv.Itoa(s.side))
+				s.changeSide(0)
 			case `\1`, `\u`:
 				if s.side == 1 {
 					continue
 				}
-				s.side = 1
-				s.ao.Request("NOTIFY", "Create", strconv.Itoa(s.side))
-				s.ai.Request("NOTIFY", "Create", strconv.Itoa(s.side))
+				s.changeSide(1)
 			case `\4`:
 			case `\5`:
 			case `\6`:
@@ -799,12 +797,7 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 				if err != nil {
 					return asts[index:], err
 				}
-				if s.side == n {
-					continue
-				}
-				s.side = n
-				s.ao.Request("NOTIFY", "Create", strconv.Itoa(s.side))
-				s.ai.Request("NOTIFY", "Create", strconv.Itoa(s.side))
+				s.changeSide(n)
 			case `\q`:
 				if len(ast.Args) < 2 {
 					return asts[index:], errors.New(`invalid args size in \q`)
@@ -1088,6 +1081,17 @@ func (s *Sakura) SendEvent(event ...structs.Event) string {
 		s.openMenu(e.Reference[3])
 	}
 	return v
+}
+
+func (s *Sakura) changeSide(side int) {
+	if s.side == side {
+		return
+	}
+	s.side = side
+	s.ao.Request("NOTIFY", "Create", strconv.Itoa(s.side))
+	s.ai.Request("NOTIFY", "Create", strconv.Itoa(s.side))
+	s.ao.Request("NOTIFY", "OnScopeChange", strconv.Itoa(s.side))
+	s.ai.Request("NOTIFY", "OnScopeChange", strconv.Itoa(s.side))
 }
 
 func (s *Sakura) openMenu(from string) {
