@@ -374,6 +374,11 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 				default:
 				}
 			}
+		case "OpenScriptInputbox":
+			if !s.fromAo(req) {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			s.ai.Request("NOTIFY", "OpenScriptInputBox")
 		case "OpenScriptLog":
 			if !s.fromAo(req) {
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
