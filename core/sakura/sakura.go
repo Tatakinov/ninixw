@@ -1465,6 +1465,7 @@ func (s *Sakura) ChangeShell(shell string) error {
 	a.Request("NOTIFY", "Initialize", path.AppendDirSeparator(s.ao.Path), "AO")
 	a.Request("NOTIFY", "BasewareVersion", "ninixw", version.Version)
 	a.Request("NOTIFY", "Endpoint", filepath.Join(path.SockDir(), s.uuid), s.uuid_ao)
+	a.Request("NOTIFY", "Create", strconv.Itoa(s.side))
 	s.ao = a
 	return nil
 }
@@ -1486,6 +1487,7 @@ func (s *Sakura) ChangeBalloon(b string) error {
 	a.Request("NOTIFY", "Initialize", path.AppendDirSeparator(a.Path), "AI")
 	a.Request("NOTIFY", "BasewareVersion", "ninixw", version.Version)
 	a.Request("NOTIFY", "Endpoint", filepath.Join(path.SockDir(), s.uuid), s.uuid_ai)
+	a.Request("NOTIFY", "Create", strconv.Itoa(s.side))
 	s.ai = a
 	return nil
 }
