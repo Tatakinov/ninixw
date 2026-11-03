@@ -438,6 +438,28 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 			if err != nil {
 				log.Println(err)
 			}
+		case "ChangeShell":
+			if !s.fromAo(req) {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			if len(req.Reference) == 0 {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			err := s.ChangeShell(req.Reference[0])
+			if err != nil {
+				log.Println(err)
+			}
+		case "ChangeBalloon":
+			if !s.fromAo(req) {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			if len(req.Reference) == 0 {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			err := s.ChangeBalloon(req.Reference[0])
+			if err != nil {
+				log.Println(err)
+			}
 		case "ChangeLanguage":
 			if !s.fromAo(req) {
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
@@ -1434,12 +1456,15 @@ func (s *Sakura) ReloadShiori() error {
 	return nil
 }
 
-func (s *Sakura) LoadShell(shell string) error {
-	s.ao.Stop()
+func (s *Sakura) ChangeShell(shell string) error {
 	a, err := newAo(s.shiori.Shells[shell])
 	if err != nil {
 		return err
 	}
+	s.ao.Stop()
+	a.Request("NOTIFY", "Initialize", path.AppendDirSeparator(s.ao.Path), "AO")
+	a.Request("NOTIFY", "BasewareVersion", "ninixw", version.Version)
+	a.Request("NOTIFY", "Endpoint", filepath.Join(path.SockDir(), s.uuid), s.uuid_ao)
 	s.ao = a
 	return nil
 }
@@ -1448,16 +1473,19 @@ func (s *Sakura) ReloadShell() {
 	s.ao.Request("NOTIFY", "Reload")
 }
 
-func (s *Sakura) LoadBalloon(b string) error {
+func (s *Sakura) ChangeBalloon(b string) error {
 	balloon, err := s.parent.GetBalloon(b)
 	if err != nil {
 		return err
 	}
-	s.ai.Stop()
 	a, err := newAi(balloon)
 	if err != nil {
 		return err
 	}
+	s.ai.Stop()
+	a.Request("NOTIFY", "Initialize", path.AppendDirSeparator(a.Path), "AI")
+	a.Request("NOTIFY", "BasewareVersion", "ninixw", version.Version)
+	a.Request("NOTIFY", "Endpoint", filepath.Join(path.SockDir(), s.uuid), s.uuid_ai)
 	s.ai = a
 	return nil
 }

@@ -12,6 +12,9 @@ type sorakado struct {
 }
 
 func (s sorakado) Request(method string, command string, args ...string) (string, bool) {
+	if !s.process.Alive() {
+		return "", false
+	}
 	req := make([]string, 0, len(args) + 4)
 	req = append(req, fmt.Sprintf("%s SORAKADO/0.1", method), "Charset: UTF-8", fmt.Sprintf("Command: %s", command))
 	for i, arg := range args {

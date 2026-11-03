@@ -145,3 +145,12 @@ func (p Process) Stop() error {
 		return err
 	}
 }
+
+func (p Process) Alive() bool {
+	select {
+	case <- p.alive:
+		return false
+	default:
+		return true
+	}
+}
