@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -39,6 +40,7 @@ type Baseware struct {
 	installs with_mutex.WithMutex[string, struct{}]
 	scriptlogProcess *scriptlog
 	preferencesProcess *preferences
+	httpClient *http.Client
 }
 
 func NewBaseware() *Baseware {
@@ -76,6 +78,7 @@ func NewBaseware() *Baseware {
 		installs: with_mutex.NewWithMutex[string, struct{}](),
 		scriptlogProcess: newScriptlog(),
 		preferencesProcess: newPreferences(),
+		httpClient: &http.Client{},
 	}
 }
 
