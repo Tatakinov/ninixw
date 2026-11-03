@@ -224,7 +224,7 @@ func (b *Baseware) install(root string, s interfaces.IInstallObserver, in bool, 
 		with_balloon := b_dir != "" && b_src_dir != ""
 		if with_balloon {
 			dst := filepath.Join(path.BalloonDir(), b_dir)
-			if confirm(dst) {
+			if b.confirm(dst) {
 				src := filepath.Join(root, b_src_dir)
 				utils.CopyAll(dst, src)
 				os.RemoveAll(src)
@@ -235,7 +235,7 @@ func (b *Baseware) install(root string, s interfaces.IInstallObserver, in bool, 
 		}
 		dir := m["directory"]
 		dst := filepath.Join(path.GhostDir(), dir)
-		if confirm(dst) {
+		if b.confirm(dst) {
 			err := utils.CopyAll(dst, root)
 			if err != nil {
 				log.Println(err)
@@ -284,7 +284,7 @@ func (b *Baseware) install(root string, s interfaces.IInstallObserver, in bool, 
 	case "balloon":
 		dir := m["directory"]
 		dst := filepath.Join(path.BalloonDir(), dir)
-		if confirm(dst) {
+		if b.confirm(dst) {
 			err := utils.CopyAll(dst, root)
 			if err != nil {
 				log.Println(err)
@@ -339,13 +339,20 @@ func (b *Baseware) install(root string, s interfaces.IInstallObserver, in bool, 
 	return "", "", "", err
 }
 
-func confirm(path string) bool {
-	_, err := os.Stat(path)
-	if err != nil {
+func (b *Baseware) confirm(p string) bool {
+	_, err := os.Stat(p)
+	if err == os.ErrNotExist {
 		return true
+	} else if err != nil {
+		log.Println(err)
+		return false
 	}
-	// TODO yes-no
-	return false
+	cmd := exec.Command(filepath.Join(path.GuiDir(), "ninixw-msgbox.exe"), b.GetText("はい"), b.GetText("いいえ"), b.GetText("上書きしますか？"))
+	err = cmd.Run()
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 func (b *Baseware) showReadMe(root string, info interfaces.IBaseInfo) error {

@@ -18,6 +18,9 @@
         "全て終了": "Close all ghost",
         "スクリプト入力": "Input script",
         "スクリプトログ": "Script log",
-        "ベースウェアについて": "About baseware"
+        "ベースウェアについて": "About baseware",
+        "はい": "Yes",
+        "いいえ": "No",
+        "上書きしますか？": "Do you want to overwrite?"
     }
 }
