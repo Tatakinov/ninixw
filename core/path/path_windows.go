@@ -40,7 +40,7 @@ func GuiDir() string {
 	return filepath.Join(ExecutableDir(), "internal", "gui")
 }
 
-func GuiDir() string {
+func LocaleDir() string {
 	return filepath.Join(ExecutableDir(), "internal", "locale")
 }
 
