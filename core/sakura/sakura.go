@@ -669,13 +669,17 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 					return asts[index:], errors.New(`invalid args size in \!`)
 				}
 				switch ast.Args[0] {
-				case "raise", "notify":
+				case "raise", "notify", "embed":
 					if len(ast.Args) < 2 {
 						return asts[index:], errors.New(`invalid args size in \![raise/notify]`)
 					}
 					method := "GET"
 					if ast.Args[0] == "notify" {
 						method = "NOTIFY"
+					}
+					opt = make(map[string]struct{})
+					if ast.Args[0] == "embed" {
+						opt["embed"] = struct{}{}
 					}
 					s.SendEvent(structs.Event{ Method: method, Option: make(map[string]struct{}), Event: ast.Args[1], Reference: ast.Args[2:] })
 				case "timerraise", "timernotify":
@@ -745,7 +749,15 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 							}
 						})
 					}
-				case "bind":
+				case "raiseother", "notifyother":
+					// TODO stub
+				case "timerraiseother", "timernotifyother":
+					// TODO stub
+				case "raiseplugin", "notifyplugin":
+					// TODO stub
+				case "timerraiseplugin", "timernotifyplugin":
+					// TODO stub
+				case "bind", "bind-noevent":
 					if len(ast.Args) != 4 {
 						return asts[index:], errors.New(`invalid args size in \![bind]`)
 					}
@@ -756,8 +768,54 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 						flag = "false"
 					}
 					bind_args = append(bind_args, strconv.Itoa(s.side), ast.Args[1], ast.Args[2], "script", flag)
+				case "anim":
+					// TODO stub
+				case "set":
+					// TODO stub
+				case "reset":
+					// TODO stub
+				case "get":
+				case "move", "moveasync":
+					// TODO stub
+				case "execute":
+					// TODO stub
+				case "send":
+					// TODO stub
+				case "cancel":
+					// TODO stub
+				case "*":
+					// TODO stub
+				case "quicksection":
+					// TODO stub
+				case "enter":
+					// TODO stub
+				case "leave":
+					// TODO stub
+				case "update":
+					// TODO stub
+				case "updateother":
+					// TODO stub
+				case "updatebymyself":
+					// TODO stub
+				case "vanishbymyself":
+					// TODO stub
+				case "change":
+					// TODO stub
+				case "call":
+					// TODO stub
+				case "sound":
+					// TODO stub
+				case "open":
+					// TODO stub
+				case "close":
+					// TODO stub
+				case "reload":
+					// TODO stub
+				case "load":
+					// TODO stub
+				case "unload":
+					// TODO stub
 				default:
-				}
 			case `\&`:
 			case `\*`:
 			case `\+`:
