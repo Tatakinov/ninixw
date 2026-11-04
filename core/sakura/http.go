@@ -1,4 +1,4 @@
-package baseware
+package sakura
 
 import (
 	"bufio"
@@ -17,7 +17,7 @@ import (
 	"ninixw-core/utils"
 )
 
-func (b *Baseware) HttpRequest(method string, u string, body string, opt structs.HttpOption, root string) (chan structs.HttpResponse, context.CancelFunc, error) {
+func (s *Sakura) HttpRequest(method string, u string, body string, opt structs.HttpOption, root string) (chan structs.HttpResponse, context.CancelFunc, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	req, err := http.NewRequestWithContext(ctx, method, u, nil)
 	if body != "" {
@@ -34,14 +34,14 @@ func (b *Baseware) HttpRequest(method string, u string, body string, opt structs
 	}
 	if opt.NoFile == "" && opt.File == "" {
 		opt.File = filepath.Base(filepath.Clean(ur.Path))
-		if opt.File == "" {
+		if opt.File == "" || opt.File == "/" {
 			opt.File = "index.html"
 		}
 	}
 	ch := make(chan structs.HttpResponse, 1)
 	go func() {
 		defer close(ch)
-		res, err := b.httpClient.Do(req)
+		res, err := s.http_client.Do(req)
 		if err != nil {
 			log.Println(err)
 			return
@@ -79,6 +79,11 @@ func (b *Baseware) HttpRequest(method string, u string, body string, opt structs
 			}
 			r.Data = strings.Join(buffer, "\x01")
 		} else {
+			err := os.MkdirAll(filepath.Join(root, "var"), 0755)
+			if err != nil {
+				log.Println(err)
+				return
+			}
 			filename := filepath.Join(root, "var", opt.File)
 			o, err := os.OpenFile(filename, os.O_RDWR | os.O_CREATE | os.O_TRUNC, 0644)
 			if err != nil {

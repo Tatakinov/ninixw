@@ -2,6 +2,7 @@ package sakura
 
 import (
 	"cmp"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -85,6 +86,8 @@ type Sakura struct {
 	sync_side []int
 	rect with_mutex.WithMutex[rectKey, Rect]
 	direction_info directionInfo
+	http_client *http.Client
+	http_cancel with_mutex.WithMutex[string, context.CancelFunc]
 }
 
 func toSide(side int) string {
@@ -139,6 +142,8 @@ func NewSakura(b interfaces.IBaseware, ghost ghost.Ghost, shell string, balloon 
 		sync_side: make([]int, 0),
 		rect: with_mutex.NewWithMutex[rectKey, Rect](),
 		direction_info: directionInfo{ m: sync.RWMutex{}, direction: make(map[int]bool) },
+		http_client: &http.Client{},
+		http_cancel: with_mutex.NewWithMutex[string, context.CancelFunc](),
 	}
 	err = s.startServer()
 	if err != nil {
@@ -499,6 +504,11 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 
 func (s *Sakura) Stop() {
 	close(s.quit)
+	s.http_cancel.Lock(func(m map[string]context.CancelFunc) {
+		for _, v := range m {
+			v()
+		}
+	})
 	err := s.shiori.Stop()
 	if err != nil {
 		log.Println("shiori exited at", err)
@@ -677,7 +687,7 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 					if ast.Args[0] == "notify" {
 						method = "NOTIFY"
 					}
-					opt = make(map[string]struct{})
+					opt := make(map[string]struct{})
 					if ast.Args[0] == "embed" {
 						opt["embed"] = struct{}{}
 					}
@@ -778,7 +788,120 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 				case "move", "moveasync":
 					// TODO stub
 				case "execute":
-					// TODO stub
+					if len(ast.Args) < 2 {
+						return asts[index:], errors.New(`invalid args size in \![execute]`)
+					}
+					switch ast.Args[1] {
+					case "http-get", "http-post", "http-head", "http-put", "http-delete", "http-patch", "http-options":
+						log.Println("debug2")
+						if len(ast.Args) < 3 {
+							return asts[index:], errors.New(`invalid args size in \![execute,http]`)
+						}
+						method := strings.ToUpper(ast.Args[1][5:])
+						url := ast.Args[2]
+						opt := structs.HttpOption{
+							Accept: "",
+							AcceptLanguage: "",
+							Authorization: "",
+							Cookie: "",
+							ContentType: "",
+							File: "",
+							NoFile: "",
+							Headers: [][2]string{},
+							Param: []string{},
+							ParamCharset: "",
+							ParamFile: "",
+						}
+						id := ""
+						is_sync := true
+						for _, v := range ast.Args[3:] {
+							if strings.HasPrefix(v, "--accept=") {
+								opt.Accept = v[9:]
+							} else if strings.HasPrefix(v, "--accept-language=") {
+								opt.AcceptLanguage = v[18:]
+							} else if strings.HasPrefix(v, "--async=") {
+								is_sync = false
+								id = v[8:]
+							} else if strings.HasPrefix(v, "--authorization=") {
+								opt.Authorization = v[16:]
+							} else if strings.HasPrefix(v, "--cookie=") {
+								opt.Cookie = v[9:]
+							} else if strings.HasPrefix(v, "--content-type=") {
+								opt.ContentType = v[15:]
+							} else if strings.HasPrefix(v, "--file=") {
+								opt.File = filepath.Clean(v[7:])
+							} else if strings.HasPrefix(v, "--header=") {
+								kv := strings.SplitN(v[9:], ":", 2)
+								if len(kv) == 2 {
+									opt.Headers = append(opt.Headers, [2]string{ strings.TrimSpace(kv[0]), strings.TrimSpace(kv[1]) })
+								}
+							} else if strings.HasPrefix(v, "--insecure=") {
+								// TODO stub
+							} else if strings.HasPrefix(v, "--nodescript=") {
+								// TODO stub
+							} else if strings.HasPrefix(v, "--nofile=") {
+								opt.NoFile = v[9:]
+							} else if strings.HasPrefix(v, "--no-cache=") {
+								// TODO stub
+							} else if strings.HasPrefix(v, "--param=") {
+								opt.Param = append(opt.Param, v[8:])
+							} else if strings.HasPrefix(v, "--param-charset=") {
+								opt.ParamCharset = v[16:]
+							} else if strings.HasPrefix(v, "--param-input-file=") {
+								opt.ParamFile = v[19:]
+							} else if strings.HasPrefix(v, "--progress-notify=") {
+								// TODO stub
+							} else if strings.HasPrefix(v, "--streaming") {
+								// TODO stub
+							} else if strings.HasPrefix(v, "--sync=") {
+								is_sync = true
+								id = v[7:]
+							} else if strings.HasPrefix(v, "--timeout=") {
+								// TODO stub
+							} else if strings.HasPrefix(v, "--m_websocketProtocol=") {
+								// TODO stub
+							} else {
+								opt.Param = append(opt.Param, strings.Split(v, "&")...)
+							}
+						}
+						ch, cancel, err := s.HttpRequest(method, url, "", opt, s.shiori.Path)
+						if err != nil {
+							log.Println(err)
+							break
+						}
+						s.http_cancel.Lock(func(m map[string]context.CancelFunc) {
+							m[url] = cancel
+						})
+						f = func() {
+							res, ok := <- ch
+							s.http_cancel.Lock(func(m map[string]context.CancelFunc) {
+								delete(m, url)
+							})
+							if !ok {
+								return
+							}
+							s.SendEvent(structs.Event{
+								Method: "GET",
+								Event: "OnExecuteHTTPComplete",
+								Reference: []string{
+									res.Method,
+									id,
+									url,
+									res.Data,
+									res.Status,
+									res.Cookie,
+									res.Headers,
+								},
+							})
+						}
+						if is_sync {
+							f()
+						} else {
+							go func() {
+								f()
+							}()
+						}
+					}
 				case "send":
 					// TODO stub
 				case "cancel":
@@ -816,6 +939,7 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 				case "unload":
 					// TODO stub
 				default:
+				}
 			case `\&`:
 			case `\*`:
 			case `\+`:

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -38,9 +37,8 @@ type Baseware struct {
 	quit chan struct{}
 	uuids with_mutex.WithMutex[string, struct{}]
 	installs with_mutex.WithMutex[string, struct{}]
-	scriptlogProcess *scriptlog
-	preferencesProcess *preferences
-	httpClient *http.Client
+	scriptlog_process *scriptlog
+	preferences_process *preferences
 }
 
 func NewBaseware() *Baseware {
@@ -76,9 +74,8 @@ func NewBaseware() *Baseware {
 		quit: make(chan struct{}),
 		uuids: with_mutex.NewWithMutex[string, struct{}](),
 		installs: with_mutex.NewWithMutex[string, struct{}](),
-		scriptlogProcess: newScriptlog(),
-		preferencesProcess: newPreferences(),
-		httpClient: &http.Client{},
+		scriptlog_process: newScriptlog(),
+		preferences_process: newPreferences(),
 	}
 }
 
@@ -512,7 +509,7 @@ func (b *Baseware) SetPreferences(k string, v string) {
 }
 
 func (b *Baseware) OpenScriptLog() {
-	err := b.scriptlogProcess.Exec()
+	err := b.scriptlog_process.Exec()
 	if err != nil {
 		log.Println(err)
 	}
@@ -526,11 +523,11 @@ func (b *Baseware) AppendScriptLog(_ string, data structs.LogData) {
 	slices.SortFunc(s, func(a string, b string) int {
 		return cmp.Compare(a, b)
 	})
-	b.scriptlogProcess.Append(fmt.Sprintf("%s\x01%s\x01%s\x01%s", data.Time.Format("2006-01-02 15:04:05"), data.Ghost, strings.Join(s, ","), data.Script))
+	b.scriptlog_process.Append(fmt.Sprintf("%s\x01%s\x01%s\x01%s", data.Time.Format("2006-01-02 15:04:05"), data.Ghost, strings.Join(s, ","), data.Script))
 }
 
 func (b *Baseware) OpenPreferences() {
-	err := b.preferencesProcess.Exec(b)
+	err := b.preferences_process.Exec(b)
 	if err != nil {
 		log.Println(err)
 	}
