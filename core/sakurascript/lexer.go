@@ -55,8 +55,8 @@ func Lex(str string) []Token {
 				return data
 			}
 			n := next_meta[0] + 1
-			data = append(data, Token{ kind: lString, str: str[0:n + 1] })
-			str = str[n + 1:]
+			data = append(data, Token{ kind: lString, str: str[0:n] })
+			str = str[n:]
 		case `\`:
 			match := rTag.FindString(str)
 			if match != "" {
@@ -70,8 +70,8 @@ func Lex(str string) []Token {
 				return data
 			}
 			n := next_meta[0] + 1
-			data = append(data, Token{ kind: lString, str: str[0:n + 1] })
-			str = str[n + 1:]
+			data = append(data, Token{ kind: lString, str: str[0:n] })
+			str = str[n:]
 		case "%":
 			match := rEnv.FindString(str)
 			if match != "" {
@@ -85,8 +85,8 @@ func Lex(str string) []Token {
 				return data
 			}
 			n := next_meta[0] + 1
-			data = append(data, Token{ kind: lString, str: str[0:n + 1] })
-			str = str[n + 1:]
+			data = append(data, Token{ kind: lString, str: str[0:n] })
+			str = str[n:]
 		default:
 			next_meta := rMeta.FindStringIndex(str)
 			if next_meta == nil {
