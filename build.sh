@@ -18,7 +18,7 @@ fi
 mkdir -p ${BINDIR} ${LIBEXECDIR} ${LIBDIR} ${LOCALEDIR}
 
 # build core
-cd core && go build -o ../${BINDIR}/ninixw.exe && cd -
+cd core && go build -o ../${BINDIR}/ninixw-core && cd -
 if [ $? -ne 0 ]; then
     echo "failed to build core"
     exit 1
