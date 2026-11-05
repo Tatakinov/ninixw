@@ -13,4 +13,5 @@ Copy-Item -Path build_x86_64/gui/Release/* -Destination ninixw/internal/gui -Rec
 Copy-Item -Path build_i686/proxy/Release/* -Destination ninixw/internal/proxy -Recurse
 Copy-Item -Path build_x86_64/shm/Release/* -Destination ninixw/internal/shm -Recurse
 Copy-Item -Path build_x86_64/sorakado/Release/* -Destination ninixw/internal/sorakado/sorakado_builtin -Recurse
-Copy-Item -Path locale/* -Destination ninixw/internal/locale/*
+Copy-Item -Path locale/* -Destination ninixw/internal/locale -Recurse
+Copy-Item -Path windows/ninixw.bat -Destination ninixw -Recurse
