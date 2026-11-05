@@ -1,3 +1,3 @@
 @echo off
-ninixw-core %*
+ninixw.exe %*
 pause

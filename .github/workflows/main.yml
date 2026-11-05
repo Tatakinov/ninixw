@@ -34,4 +34,4 @@ jobs:
       with:
           name: ninixw-windows
           path: |
-              win
+              ninixw
