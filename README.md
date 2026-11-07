@@ -18,7 +18,7 @@ Required(Linux):
 - C++ compiler (gui, proxy, shm, sorakado, shiori)
 - cmake (gui, proxy, shm, sorakado)
 - libffi (proxy)
-- fltk1.3 (gui)
+- fltk1.3 or fltk1.4 (gui)
 - SDL3 (sorakado)
 - SDL3-image (sorakado)
 - SDL3-ttf (sorakado)
@@ -45,11 +45,21 @@ Optional(Linux/Windows):
 
 ### Linux
 
+#### Install Requirements
+
+- apt(Ubuntu)
+
+```bash
+# apt install build-essential cmake golang-go libfltk1.4-dev libjsoncpp-dev libsdl3{,-image,-ttf}-dev
+```
+
+#### Build ninixw
+
 ```bash
 $ git clone --recursive https://github.com/Tatakinov/ninixw
 $ cd ninixw
 $ ./build.sh
-# cp -r ninixw /opt/ninixw
+# cp -Pr ninixw /opt/ninixw
 ```
 
 ### Windows
