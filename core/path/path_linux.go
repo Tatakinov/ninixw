@@ -14,11 +14,15 @@ func localeDir() string {
 }
 
 func HomeDir() string {
-	dir, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
+	path := os.Getenv("NINIXW_HOME_PATH")
+	if path == "" {
+		dir, err := os.UserHomeDir()
+		if err != nil {
+			panic(err)
+		}
+		return filepath.Join(dir, ".ninix")
 	}
-	return filepath.Join(dir, ".ninix")
+	return path
 }
 
 func AoDir() string {

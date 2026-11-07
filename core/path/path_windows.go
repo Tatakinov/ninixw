@@ -6,7 +6,11 @@ import (
 )
 
 func HomeDir() string {
-	return filepath.Join(ExecutableDir(), ".ninix")
+	path := os.Getenv("NINIXW_HOME_PATH")
+	if path == "" {
+		return filepath.Join(ExecutableDir(), ".ninix")
+	}
+	return path
 }
 
 func AoDir() string {
