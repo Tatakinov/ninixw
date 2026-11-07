@@ -6,4 +6,4 @@ export LD_LIBRARY_PATH=/opt/ninixw/lib:${LD_LIBRARY_PATH}
 export NINIXW_LIBEXEC_PATH=/opt/ninixw/libexec
 export NINIXW_LOCALE_PATH=/opt/ninixw/locale
 
-exec ninixw-core . $@
+exec ninixw-core $@
