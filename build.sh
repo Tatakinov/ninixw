@@ -61,4 +61,4 @@ cp linux/bin/ninixw ${BINDIR}
 # build complete
 echo ""
 echo ""
-echo '`# cp -Pr ./ninixw /opt/ninixw` and append `/opt/ninixw/bin` to PATH and run `$ ninixw`'
+echo '`# cp -Pr ./ninixw/* /opt/ninixw/` and append `/opt/ninixw/bin` to PATH and run `$ ninixw`'
