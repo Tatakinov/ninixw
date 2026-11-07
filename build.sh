@@ -56,6 +56,8 @@ ln -s libaya5.so ${LIBDIR}/yaya.dll
 
 cp -r locale/* ${LOCALEDIR}/
 
+cp linux/bin/ninixw ${BINDIR}
+
 # build complete
 echo ""
 echo ""
