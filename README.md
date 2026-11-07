@@ -53,6 +53,12 @@ Optional(Linux/Windows):
 # apt install build-essential cmake golang-go libfltk1.4-dev libjsoncpp-dev libsdl3{,-image,-ttf}-dev
 ```
 
+- dnf(Fedora)
+
+```bash
+# dnf install cmake fltk-{devel,fluid} gcc-c++ git golang-bin jsoncpp-devel SDL3{,_image,_ttf}-devel
+```
+
 #### Build ninixw
 
 ```bash
