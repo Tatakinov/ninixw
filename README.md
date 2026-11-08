@@ -49,23 +49,23 @@ Optional(Linux/Windows):
 
 - apt(Ubuntu)
 
-```bash
+```
 # apt install build-essential cmake golang-go libfltk1.4-dev libjsoncpp-dev libsdl3{,-image,-ttf}-dev
 ```
 
 - dnf(Fedora)
 
-```bash
+```
 # dnf install cmake fltk-{devel,fluid} gcc-c++ git golang-bin jsoncpp-devel SDL3{,_image,_ttf}-devel
 ```
 
 #### Build ninixw
 
-```bash
+```
 $ git clone --recursive https://github.com/Tatakinov/ninixw
 $ cd ninixw
 $ ./build.sh
-# cp -Pr ninixw /opt/ninixw
+# cp -Pr ninixw/* /opt/ninixw/
 ```
 
 ### Windows
@@ -78,7 +78,7 @@ or
 > git clone --recursive https://github.com/Tatakinov/ninixw
 > cd ninixw
 > ./build.ps1
-> cp win /path/to/ninixw
+> cp ninixw /path/to/ninixw
 ```
 
 ## LICENSE
