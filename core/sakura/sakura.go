@@ -267,6 +267,26 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 			s.rect.Lock(func(m map[rectKey]Rect) {
 				m[rectKey{ side: side, kind: kind }] = Rect{ X: x, Y: y, W: w, H: h }
 			})
+		case "RaiseBalloon":
+			if !s.fromAo(req) {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			side, err := strconv.Atoi(req.Reference[0])
+			if err != nil {
+				log.Println(err)
+				break
+			}
+			s.ai.Request("NOTIFY", "Raise", strconv.Itoa(side))
+		case "RaiseSurface":
+			if !s.fromAi(req) {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			side, err := strconv.Atoi(req.Reference[0])
+			if err != nil {
+				log.Println(err)
+				break
+			}
+			s.ao.Request("NOTIFY", "Raise", strconv.Itoa(side))
 		case "ResetBalloonPosition":
 			if !s.fromAo(req) && !s.fromAi(req) {
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
