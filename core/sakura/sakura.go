@@ -63,6 +63,11 @@ type directionInfo struct {
 	direction map[int]bool
 }
 
+type animationTimer struct {
+	T *time.Ticker
+	ID string
+}
+
 type Sakura struct {
 	shiori shiori
 	ao ao
@@ -76,6 +81,7 @@ type Sakura struct {
 	last_script string
 	timer_ch with_mutex.WithMutex[string, func()]
 	wait_timer *time.Timer
+	animation_timer animationTimer
 	balloon_timeout int
 	quick_section bool
 	paused bool
@@ -131,7 +137,8 @@ func NewSakura(b interfaces.IBaseware, ghost ghost.Ghost, shell string, balloon 
 		script_ch: make(chan script, 100),
 		last_script: "",
 		timer_ch: with_mutex.NewWithMutex[string, func()](),
-		wait_timer: time.NewTimer(0 * time.Second),
+		wait_timer: time.NewTimer(1 * time.Second),
+		animation_timer: animationTimer{ T: time.NewTicker(1 * time.Second), ID: "" },
 		balloon_timeout: kBalloonTimeout,
 		quick_section: false,
 		paused: false,
@@ -145,6 +152,8 @@ func NewSakura(b interfaces.IBaseware, ghost ghost.Ghost, shell string, balloon 
 		http_client: &http.Client{},
 		http_cancel: with_mutex.NewWithMutex[string, context.CancelFunc](),
 	}
+	s.wait_timer.Stop()
+	s.animation_timer.T.Stop()
 	err = s.startServer()
 	if err != nil {
 		s.Stop()
@@ -556,6 +565,7 @@ func (s *Sakura) MainLoop() {
 
 	go func () {
 		defer s.Stop()
+		defer s.animation_timer.T.Stop()
 		defer s.wait_timer.Stop()
 		asts := make([]sakurascript.Ast, 0)
 		ch := make(chan struct{}, 100)
@@ -620,7 +630,19 @@ func (s *Sakura) MainLoop() {
 				s.SendEvent(structs.Event{ Method: "GET", Option: make(map[string]struct{}), Event: "OnSurfaceRestore", Reference: []string{} })
 			case <- s.wait_timer.C:
 				s.paused = false
+				interpret_ticker.Reset(50 * time.Millisecond)
 				ch <- struct{}{}
+			case <- s.animation_timer.T.C:
+				res, ok := s.ao.Request("GET", "IsPlayingAnimation", strconv.Itoa(s.side), s.animation_timer.ID)
+				if !ok {
+					log.Println("Error")
+					continue
+				}
+				if res.Header["Result"] == "1" {
+					interpret_ticker.Reset(50 * time.Millisecond)
+					s.paused = false
+					ch <- struct{}{}
+				}
 			case <- ch:
 				if len(asts) == 0 && !s.alive {
 					return
@@ -1005,7 +1027,16 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 			case `\f`:
 				// TODO stub
 			case `\i`:
-				// TODO stub
+				if len(ast.Args) == 0 {
+					return asts[index:], errors.New(`invalid args size in \i`)
+				}
+				s.ao.Request("NOTIFY", "InvokeAnimation", strconv.Itoa(s.side), ast.Args[0], "start")
+				if len(ast.Args) == 2 && ast.Args[1] == "wait" {
+					s.paused = true
+					s.animation_timer.T.Reset(1 * time.Millisecond)
+					s.animation_timer.ID = ast.Args[0]
+					return asts[index:], nil
+				}
 			case `\j`:
 				// TODO stub
 			case `\m`:

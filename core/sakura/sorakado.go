@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"ninixw-core/log"
 	"ninixw-core/process"
 )
 
@@ -11,9 +12,9 @@ type sorakado struct {
 	process process.Process
 }
 
-func (s sorakado) Request(method string, command string, args ...string) (string, bool) {
+func (s sorakado) Request(method string, command string, args ...string) (Response, bool) {
 	if !s.process.Alive() {
-		return "", false
+		return Response{}, false
 	}
 	req := make([]string, 0, len(args) + 4)
 	req = append(req, fmt.Sprintf("%s SORAKADO/0.1", method), "Charset: UTF-8", fmt.Sprintf("Command: %s", command))
@@ -26,9 +27,17 @@ func (s sorakado) Request(method string, command string, args ...string) (string
 	s.process.Send(method == "GET", ch, r)
 	if method == "GET" {
 		data, ok := <- ch
-		return data, ok
+		if !ok {
+			return Response{}, ok
+		}
+		res, err := NewResponse(data, "UTF-8")
+		if err != nil {
+			log.Println(err)
+			return Response{}, false
+		}
+		return res, ok
 	} else {
-		return "", false
+		return Response{}, false
 	}
 }
 
