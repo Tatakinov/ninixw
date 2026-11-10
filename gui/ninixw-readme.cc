@@ -74,6 +74,9 @@ int main(int argc, char *argv[]) {
         in = toUTF8(in);
     }
     auto *w = new Fl_Double_Window(480, 320);
+#if FL_API_VERSION >= 10400
+    w->iconlabel("io.github.tatakinov.gui.readme");
+#endif // FLTK >= 1.4
     {
         auto *o = new Fl_Button(401, 283, 64, 22, "OK");
         o->callback((Fl_Callback*)onOK, w);

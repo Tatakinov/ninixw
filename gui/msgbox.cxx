@@ -5,6 +5,9 @@
 Fl_Double_Window* make_window(const char *yes, const char *no, const char *content) {
   Fl_Double_Window* w;
   { Fl_Double_Window* o = new Fl_Double_Window(198, 117);
+#if FL_API_VERSION >= 10400
+    o->iconlabel("io.github.tatakinov.gui.msgbox");
+#endif // FLTK >= 1.4
     w = o; (void)w;
     { Fl_Button* o = new Fl_Button(15, 80, 64, 22, yes);
       o->callback((Fl_Callback*)onOK, w);

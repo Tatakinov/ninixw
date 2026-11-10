@@ -133,9 +133,12 @@ int main() {
         return 1;
     }
     int ret = -1;
-    Fl_Double_Window w(400, 200, "Script Log");
-    TableColumn t(20, 20, 360, 160);
-    w.end();
+    Fl_Double_Window *w = new Fl_Double_Window(400, 200, "Script Log");
+#if FL_API_VERSION >= 10400
+    w->iconlabel("io.github.tatakinov.gui.preferences");
+#endif // FLTK >= 1.4
+    TableColumn *t = new TableColumn(20, 20, 360, 160);
+    w->end();
     auto th = std::thread([&]() {
         std::string line;
         while (std::getline(std::cin, line)) {
@@ -155,19 +158,19 @@ int main() {
             }
             if (ret == -1) {
                 Fl::lock();
-                t.append(data);
+                t->append(data);
                 Fl::unlock();
                 Fl::awake();
             }
         }
         if (ret == -1) {
             Fl::lock();
-            w.hide();
+            w->hide();
             Fl::unlock();
             Fl::awake();
         }
     });
-    w.show();
+    w->show();
     ret = Fl::run();
     std::cout << "ok" << std::endl;
     th.join();
