@@ -133,10 +133,8 @@ int main() {
         return 1;
     }
     int ret = -1;
+    Fl_Window::default_xclass("io.github.tatakinov.gui.scriptlog");
     Fl_Double_Window *w = new Fl_Double_Window(400, 200, "Script Log");
-#if FL_API_VERSION >= 10400
-    w->iconlabel("io.github.tatakinov.gui.preferences");
-#endif // FLTK >= 1.4
     TableColumn *t = new TableColumn(20, 20, 360, 160);
     w->end();
     auto th = std::thread([&]() {
