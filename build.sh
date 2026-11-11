@@ -3,7 +3,7 @@
 BINDIR=ninixw/bin
 LIBEXECDIR=ninixw/libexec
 LIBDIR=ninixw/lib
-LOCALEDIR=ninixw/locale
+LOCALEDIR=ninixw/share/locale
 
 if [ "$1" = "clean" ]; then
     rm -rf ./ninixw

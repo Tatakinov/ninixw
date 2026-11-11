@@ -4,7 +4,8 @@ export SAORI_FALLBACK_ALWAYS=1
 export SAORI_FALLBACK_PATH=/opt/ninixw/lib/saori
 export LD_LIBRARY_PATH=/opt/ninixw/lib:${LD_LIBRARY_PATH}
 export NINIXW_LIBEXEC_PATH=/opt/ninixw/libexec
-export NINIXW_LOCALE_PATH=/opt/ninixw/locale
+export NINIXW_LOCALE_PATH=/opt/ninixw/share/locale
+export NINIXW_MODEL_PATH=/opt/ninixw/share/model
 
 export SDL_VIDEO_DRIVER=wayland
 
