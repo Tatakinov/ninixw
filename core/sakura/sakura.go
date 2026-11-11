@@ -986,14 +986,8 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 			case `\*`:
 			case `\+`:
 			case `\0`, `\h`:
-				if s.side == 0 {
-					continue
-				}
 				s.changeSide(0)
 			case `\1`, `\u`:
-				if s.side == 1 {
-					continue
-				}
 				s.changeSide(1)
 			case `\4`:
 			case `\5`:
