@@ -638,7 +638,7 @@ func (s *Sakura) MainLoop() {
 					log.Println("Error")
 					continue
 				}
-				if res.Header["Result"] == "1" {
+				if res.Header["Result"] == "0" {
 					interpret_ticker.Reset(50 * time.Millisecond)
 					s.paused = false
 					ch <- struct{}{}
