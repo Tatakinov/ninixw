@@ -145,7 +145,7 @@ func NewSakura(b interfaces.IBaseware, ghost ghost.Ghost, shell string, balloon 
 		uuid: u,
 		uuid_ao: u_ao,
 		uuid_ai: u_ai,
-		side: 0,
+		side: -1, // 後にchangeSideで確実にsideを変えるため負の数を指定
 		sync_side: make([]int, 0),
 		rect: with_mutex.NewWithMutex[rectKey, Rect](),
 		direction_info: directionInfo{ m: sync.RWMutex{}, direction: make(map[int]bool) },
@@ -559,9 +559,6 @@ func (s *Sakura) MainLoop() {
 	s.ai.Request("NOTIFY", "Initialize", path.AppendDirSeparator(s.ai.Path), "AI")
 	s.ai.Request("NOTIFY", "BasewareVersion", "ninixw", version.Version)
 	s.ai.Request("NOTIFY", "Endpoint", filepath.Join(path.SockDir(), s.uuid), s.uuid_ai)
-
-	// 初期sideは0
-	s.changeSide(0)
 
 	go func () {
 		defer s.Stop()
