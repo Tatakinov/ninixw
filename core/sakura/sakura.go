@@ -816,7 +816,11 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 					} else if ast.Args[3] == "0" {
 						flag = "false"
 					}
-					bind_args = append(bind_args, strconv.Itoa(s.side), ast.Args[1], ast.Args[2], "script", flag)
+					noevent := "false"
+					if ast.Str == "bind-noevent" {
+						noevent = "true"
+					}
+					bind_args = append(bind_args, strconv.Itoa(s.side), ast.Args[1], ast.Args[2], "script", flag, noevent)
 				case "anim":
 					// TODO stub
 				case "set":
