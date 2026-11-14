@@ -676,20 +676,67 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 	in_q := false
 	in_a := false
 	bind_args := make([]string, 0)
-	f := func() {
+	deferBind := func() {
 		if (len(bind_args) > 0) {
 			s.ao.Request("NOTIFY", "Bind", bind_args...)
 			bind_args = make([]string, 0)
 		}
 	}
+	isBind := func(ast sakurascript.Ast) bool {
+		if ast.Kind != sakurascript.PTag {
+			return false
+		}
+		if ast.Str != `\!` {
+			return false
+		}
+		if len(ast.Args) == 0 {
+			return false
+		}
+		switch ast.Args[0] {
+		case "bind", "bind-noevent":
+			return true
+		default:
+			return false
+		}
+	}
+	animation_args := make([]string, 0)
+	deferAnimation := func() {
+		if (len(animation_args) > 0) {
+			s.ao.Request("NOTIFY", "InvokeAnimation", animation_args...)
+			animation_args = make([]string, 0)
+		}
+	}
+	isAnimation := func(ast sakurascript.Ast) bool {
+		if ast.Kind != sakurascript.PTag {
+			return false
+		}
+		if ast.Str == `\i` {
+			return true
+		}
+		if ast.Str != `\!` {
+			return false
+		}
+		if len(ast.Args) == 0 {
+			return false
+		}
+		if ast.Args[0] == "anim" {
+			return true
+		} else {
+			return false
+		}
+	}
 	for {
 		if index >= len(asts) {
-			f()
+			deferBind()
+			deferAnimation()
 			break
 		}
 		ast := asts[index]
-		if ast.Kind != sakurascript.PTag {
-			f()
+		if !isBind(ast) {
+			deferBind()
+		}
+		if !isAnimation(ast) {
+			deferAnimation()
 		}
 		index++
 		switch ast.Kind {
@@ -808,6 +855,7 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 					// TODO stub
 				case "bind", "bind-noevent":
 					if len(ast.Args) != 4 {
+						deferBind()
 						return asts[index:], errors.New(`invalid args size in \![bind]`)
 					}
 					flag := "toggle"
@@ -822,7 +870,23 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 					}
 					bind_args = append(bind_args, strconv.Itoa(s.side), ast.Args[1], ast.Args[2], "script", flag, noevent)
 				case "anim":
-					// TODO stub
+					if len(ast.Args) < 3 {
+						deferAnimation()
+						return asts[index:], errors.New(`invalid args size in \![anim]`)
+					}
+					switch ast.Args[1] {
+					case "clear", "stop", "pause", "resume":
+						animation_args = append(animation_args, strconv.Itoa(s.side), ast.Args[2], ast.Args[1], "dummy", "dummy")
+					case "offset":
+						if len(ast.Args) < 5 {
+							deferAnimation()
+							return asts[index:], errors.New(`invalid args size in \![anim,offset]`)
+						}
+						animation_args = append(animation_args, strconv.Itoa(s.side), ast.Args[2], "offset", ast.Args[3], ast.Args[4])
+					default:
+						deferAnimation()
+						return asts[index:], errors.New(`invalid command in \![anim]`)
+					}
 				case "set":
 					// TODO stub
 				case "reset":
@@ -915,7 +979,7 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 						s.http_cancel.Lock(func(m map[string]context.CancelFunc) {
 							m[url] = cancel
 						})
-						f = func() {
+						f := func() {
 							res, ok := <- ch
 							s.http_cancel.Lock(func(m map[string]context.CancelFunc) {
 								delete(m, url)
@@ -1023,10 +1087,12 @@ func (s *Sakura) interpretScript(asts []sakurascript.Ast) ([]sakurascript.Ast, e
 				// TODO stub
 			case `\i`:
 				if len(ast.Args) == 0 {
+					deferAnimation()
 					return asts[index:], errors.New(`invalid args size in \i`)
 				}
-				s.ao.Request("NOTIFY", "InvokeAnimation", strconv.Itoa(s.side), ast.Args[0], "start")
+				animation_args = append(animation_args, strconv.Itoa(s.side), ast.Args[0], "start", "dummy", "dummy")
 				if len(ast.Args) == 2 && ast.Args[1] == "wait" {
+					deferAnimation()
 					s.paused = true
 					s.animation_timer.T.Reset(1 * time.Millisecond)
 					s.animation_timer.ID = ast.Args[0]
