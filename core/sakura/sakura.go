@@ -1,6 +1,7 @@
 package sakura
 
 import (
+	"bufio"
 	"cmp"
 	"context"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -25,6 +27,7 @@ import (
 	"ninixw-core/sakurascript"
 	"ninixw-core/sstp"
 	"ninixw-core/structs"
+	"ninixw-core/utils"
 	"ninixw-core/version"
 	"ninixw-core/with_mutex"
 )
@@ -408,6 +411,27 @@ func (s *Sakura) ProcessSSTP(r sstp.IRequest) sstp.Response {
 				default:
 				}
 			}
+		case "OpenDefaultMenu":
+			if !s.fromAo(req) {
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			var items []MenuItem
+			err := json.Unmarshal([]byte(req.Reference[0]), &items)
+			if err != nil {
+				log.Println(err)
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			x, err := strconv.Atoi(req.Reference[1])
+			if err != nil {
+				log.Println(err)
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			y, err := strconv.Atoi(req.Reference[2])
+			if err != nil {
+				log.Println(err)
+				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
+			}
+			s.openDefaultMenu(items, x, y)
 		case "OpenScriptInputbox":
 			if !s.fromAo(req) {
 				return sstp.NewResponse(400, "Bad Request", sstp.NewSSTPHeader(req.KeepAlive()), "", sstp.Proto{ Name: "SSTP", Version: "1.4" })
@@ -1715,6 +1739,87 @@ func (s *Sakura) openMenu(from string) {
 		return
 	}
 	s.ao.Request("NOTIFY", "NotifyMenuInfo", string(bytes))
+}
+
+func (s *Sakura) openDefaultMenu(items []MenuItem, x int, y int) {
+	go func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		cmd := exec.CommandContext(ctx, filepath.Join(path.GuiDir(), "ninixw-contextmenu.exe"), strconv.Itoa(x), strconv.Itoa(y))
+		w, err := cmd.StdinPipe()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		go func() {
+			defer w.Close()
+			writer := bufio.NewWriter(w)
+			bytes, err := json.Marshal(items)
+			if err != nil {
+				log.Println(err)
+				cancel()
+				return
+			}
+			fmt.Fprintln(writer, string(bytes))
+			writer.Flush()
+		}()
+		r, err := cmd.StdoutPipe()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		go func() {
+			defer r.Close()
+			reader := bufio.NewReader(r)
+			bytes, err := utils.ReadLine(reader)
+			if err != nil {
+				if err != io.EOF {
+					log.Println(err)
+				}
+				return
+			}
+			go func() {
+				var menu MenuItem
+				err := json.Unmarshal(bytes, &menu)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				conn, err := net.Dial("unix", filepath.Join(path.SockDir(), s.uuid))
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				defer conn.Close()
+				l := make([]string, 0)
+				l = append(l, "EXECUTE SSTP/1.4")
+				l = append(l, "Charset: UTF-8")
+				l = append(l, fmt.Sprintf("Ao: %s", s.uuid_ao))
+				l = append(l, fmt.Sprintf("Command: %s", menu.Command))
+				for i, v := range menu.Args {
+					l = append(l, fmt.Sprintf("Reference%d: %s", i, v))
+				}
+				l = append(l, "\r\n")
+				w := bufio.NewWriter(conn)
+				w.WriteString(strings.Join(l, "\r\n"))
+				w.Flush()
+				_, err = io.ReadAll(conn)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				log.Println("click menu end")
+			}()
+		}()
+		err = cmd.Start()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		err = cmd.Wait()
+		if err != nil {
+			log.Println(err)
+		}
+	}()
 }
 
 func (s *Sakura) Uuid() string {
