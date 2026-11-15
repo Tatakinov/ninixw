@@ -12,9 +12,12 @@ namespace {
 }
 
 ContextMenuWindow::ContextMenuWindow(const std::string &json_str, int x, int y) : Fl_Window(200, 200, "Context Menu"), once_(true), x_(x), y_(y) {
-    shape_.resize(200 * 200 * 4);
-    Fl_RGB_Image img(shape_.data(), 200, 200, 4);
+    shape_.resize(1 * 1 * 4);
+    Fl_RGB_Image img(shape_.data(), 1, 1, 4);
     shape(img);
+
+    clear_border();
+    box(FL_NO_BOX);
 
     Json::Reader reader;
     reader.parse(json_str, value_);
