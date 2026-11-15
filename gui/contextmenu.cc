@@ -11,18 +11,20 @@ namespace {
     };
 }
 
-ContextMenuWindow::ContextMenuWindow(const std::string &json_str) : Fl_Window(200, 200, "Context Menu"), once_(true) {
+ContextMenuWindow::ContextMenuWindow(const std::string &json_str, int x, int y) : Fl_Window(200, 200, "Context Menu"), once_(true), x_(x), y_(y) {
     shape_.resize(200 * 200 * 4);
     Fl_RGB_Image img(shape_.data(), 200, 200, 4);
     shape(img);
 
     Json::Reader reader;
     reader.parse(json_str, value_);
-    std::cout << json_str.length() << std::endl;
     build(value_);
 }
 
 void ContextMenuWindow::build(Json::Value &value) {
+    if (!value.isArray()) {
+        return;
+    }
     for (int i = 0; !value[i].isNull(); i++) {
         auto &v = value[i];
         auto type = v["type"].asString();
@@ -47,9 +49,11 @@ ContextMenuWindow::~ContextMenuWindow() {
 int ContextMenuWindow::handle(int e) {
     if (e == FL_FOCUS && once_) {
         once_ = false;
-        const Fl_Menu_Item *item = list_[0].popup(0, 0);
-        if (item != nullptr) {
-            item->do_callback(this);
+        if (list_.size() > 0) {
+            const Fl_Menu_Item *item = list_[0].popup(x_, y_);
+            if (item != nullptr) {
+                item->do_callback(this);
+            }
         }
         hide();
         return 1;

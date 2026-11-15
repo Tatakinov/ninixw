@@ -12,11 +12,12 @@
 class ContextMenuWindow : public Fl_Window {
     private:
         bool once_;
+        int x_, y_;
         std::vector<uchar> shape_;
         std::vector<Fl_Menu_Item> list_;
         Json::Value value_;
     public:
-        ContextMenuWindow(const std::string &json_str);
+        ContextMenuWindow(const std::string &json_str, int x, int y);
         ~ContextMenuWindow();
 
         void build(Json::Value &value);
