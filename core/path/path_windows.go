@@ -1,6 +1,7 @@
 package path
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 )
