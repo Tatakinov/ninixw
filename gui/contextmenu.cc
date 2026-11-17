@@ -11,7 +11,7 @@ namespace {
     };
 }
 
-ContextMenuWindow::ContextMenuWindow(const std::string &json_str, int x, int y) : Fl_Window(200, 200, "Context Menu"), once_(true), x_(x), y_(y) {
+ContextMenuWindow::ContextMenuWindow(const std::string &json_str, int x, int y) : Fl_Window(200, 200, "Context Menu"), once_(true), pos_x_(x), pos_y_(y) {
     shape_.resize(1 * 1 * 4);
     Fl_RGB_Image img(shape_.data(), 1, 1, 4);
     shape(img);
@@ -53,7 +53,11 @@ int ContextMenuWindow::handle(int e) {
     if (e == FL_FOCUS && once_) {
         once_ = false;
         if (list_.size() > 0) {
-            const Fl_Menu_Item *item = list_[0].popup(x_, y_);
+#if FL_API_VERSION >= 10400
+            const Fl_Menu_Item *item = list_[0].popup(pos_x_, pos_y_);
+#else
+            const Fl_Menu_Item *item = list_[0].popup(pos_x_ - x(), pos_y_ - y());
+#endif // FL_API_VERSION >= 10400
             if (item != nullptr) {
                 item->do_callback(this);
             }

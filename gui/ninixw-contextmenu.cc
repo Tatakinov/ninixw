@@ -29,6 +29,8 @@ int main(int argc, char *argv[]) {
     w->resizable(w);
     w->end();
     w->show();
+#if FL_API_VERSION >= 10400
     w->maximize();
+#endif // FL_API_VERSION >= 10400
     return Fl::run();
 }

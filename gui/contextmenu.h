@@ -12,7 +12,7 @@
 class ContextMenuWindow : public Fl_Window {
     private:
         bool once_;
-        int x_, y_;
+        int pos_x_, pos_y_;
         std::vector<uchar> shape_;
         std::vector<Fl_Menu_Item> list_;
         Json::Value value_;
