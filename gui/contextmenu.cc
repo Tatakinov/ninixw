@@ -50,19 +50,30 @@ ContextMenuWindow::~ContextMenuWindow() {
 }
 
 int ContextMenuWindow::handle(int e) {
-    if (e == FL_FOCUS && once_) {
+    if (e == FL_SHOW && once_) {
         once_ = false;
         if (list_.size() > 0) {
-#if FL_API_VERSION >= 10400
-            const Fl_Menu_Item *item = list_[0].popup(pos_x_, pos_y_);
-#else
-            const Fl_Menu_Item *item = list_[0].popup(pos_x_ - x(), pos_y_ - y());
-#endif // FL_API_VERSION >= 10400
-            if (item != nullptr) {
-                item->do_callback(this);
+#if defined(_WIN32) || defined(WIN32)
+            if (0 <= pos_x_ && pos_x_ < w() && 0 <= pos_y_ && pos_y_ < h()) {
+                shape_.resize(w() * h() * 4);
+                shape_[(pos_y_ * w() + pos_x_) * 4 + 0] = 0xff;
+                shape_[(pos_y_ * w() + pos_x_) * 4 + 1] = 0xff;
+                shape_[(pos_y_ * w() + pos_x_) * 4 + 2] = 0xff;
+                shape_[(pos_y_ * w() + pos_x_) * 4 + 3] = 0xff;
+                Fl_RGB_Image img(shape_.data(), w(), h(), 4);
+                shape(img);
             }
+#endif // WIN32
+            Fl::add_timeout(0.01, [](void *data) {
+                ContextMenuWindow *w = static_cast<ContextMenuWindow *>(data);
+                Fl_Menu_Item *menu = w->menu();
+                const Fl_Menu_Item *item = menu->popup(w->pos_x(), w->pos_y());
+                if (item != nullptr) {
+                    item->do_callback(w);
+                }
+                w->hide();
+            }, this);
         }
-        hide();
         return 1;
     }
     return Fl_Window::handle(e);

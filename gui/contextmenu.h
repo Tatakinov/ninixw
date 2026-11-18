@@ -20,6 +20,11 @@ class ContextMenuWindow : public Fl_Window {
         ContextMenuWindow(const std::string &json_str, int x, int y);
         ~ContextMenuWindow();
 
+        Fl_Menu_Item *menu() {
+            return list_.data();
+        }
+        int pos_x() { return pos_x_; }
+        int pos_y() { return pos_y_; }
         void build(Json::Value &value);
         int handle(int e) override;
 };
