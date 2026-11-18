@@ -18,7 +18,7 @@ Required(Linux):
 - C++ compiler (gui, proxy, shm, sorakado, shiori)
 - cmake (gui, proxy, shm, sorakado)
 - libffi (proxy)
-- fltk1.3 or fltk1.4 (gui)
+- fltk1.4 (gui)
 - SDL3 (sorakado)
 - SDL3-image (sorakado)
 - SDL3-ttf (sorakado)
