@@ -9,7 +9,7 @@ namespace {
         builder["indentation"] = "";
         std::cout << Json::writeString(builder, *v) << std::endl;
     };
-    auto show = [](void *data) {
+    auto cb_show = [](void *data) {
         ContextMenuWindow *w = static_cast<ContextMenuWindow *>(data);
         Fl_Menu_Item *menu = w->menu();
         const Fl_Menu_Item *item = menu->popup(w->pos_x(), w->pos_y());
@@ -73,7 +73,7 @@ int ContextMenuWindow::handle(int e) {
                 //shape(img);
             }
 #endif // WIN32
-            Fl::add_timeout(1, show, this);
+            Fl::add_timeout(1, cb_show, this);
         }
         else {
             hide();
