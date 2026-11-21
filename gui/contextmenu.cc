@@ -73,7 +73,10 @@ int ContextMenuWindow::handle(int e) {
                 //shape(img);
             }
 #endif // WIN32
-            Fl::add_timeout(0.01, show, this);
+            Fl::add_timeout(1, show, this);
+        }
+        else {
+            hide();
         }
         return 1;
     }
