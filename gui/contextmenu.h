@@ -14,18 +14,15 @@ class ContextMenuWindow : public Fl_Window {
         bool once_;
         int pos_x_, pos_y_;
         std::vector<uchar> shape_;
-        std::vector<Fl_Menu_Item> list_;
+        std::vector<Fl_Menu_Item> &list_;
         Json::Value value_;
     public:
-        ContextMenuWindow(const Json::Value &value);
+        ContextMenuWindow(std::vector<Fl_Menu_Item> &list);
         ~ContextMenuWindow();
 
         Fl_Menu_Item *menu() {
             return list_.data();
         }
-        int pos_x() { return pos_x_; }
-        int pos_y() { return pos_y_; }
-        void build(Json::Value &value);
         int handle(int e) override;
 };
 

@@ -12,6 +12,37 @@
 
 #include "contextmenu.h"
 
+namespace {
+    auto cb = [](Fl_Widget *w, void *data) {
+        auto *v = static_cast<Json::Value *>(data);
+        Json::StreamWriterBuilder builder;
+        builder["indentation"] = "";
+        std::cout << Json::writeString(builder, *v) << std::endl;
+    };
+
+    void build(Json::Value &value, std::vector<Fl_Menu_Item> &list) {
+        if (!value.isArray()) {
+            return;
+        }
+        for (int i = 0; !value[i].isNull(); i++) {
+            auto &v = value[i];
+            auto type = v["type"].asString();
+            if (type == "submenu") {
+                list.push_back({strdup(v["caption"].asString().c_str()), 0, 0, 0, FL_SUBMENU});
+                build(v["list"], list);
+            }
+            if (type == "item") {
+                list.push_back({strdup(v["caption"].asString().c_str()), 0, cb, &v});
+            }
+            if (type == "check") {
+                // TODO stub
+                list.push_back({strdup(v["caption"].asString().c_str()), 0, cb, &v, FL_MENU_TOGGLE});
+            }
+        }
+        list.push_back({0});
+    }
+}
+
 int main(int argc, char *argv[]) {
     std::string line;
     std::getline(std::cin, line);
@@ -21,8 +52,10 @@ int main(int argc, char *argv[]) {
     Json::Value value;
     Json::Reader reader;
     reader.parse(line, value);
+    std::vector<Fl_Menu_Item> list;
+    build(value, list);
     Fl_Window::default_xclass("io.github.tatakinov.gui.contextmenu");
-    auto *w = new ContextMenuWindow(value);
+    auto *w = new ContextMenuWindow(list);
     w->resizable(w);
     w->end();
     w->show();

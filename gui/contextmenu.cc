@@ -3,12 +3,6 @@
 #include <iostream>
 
 namespace {
-    auto cb = [](Fl_Widget *w, void *data) {
-        auto *v = static_cast<Json::Value *>(data);
-        Json::StreamWriterBuilder builder;
-        builder["indentation"] = "";
-        std::cout << Json::writeString(builder, *v) << std::endl;
-    };
     auto cb_show = [](void *data) {
         ContextMenuWindow *w = static_cast<ContextMenuWindow *>(data);
         Fl_Menu_Item *menu = w->menu();
@@ -20,37 +14,13 @@ namespace {
     };
 }
 
-ContextMenuWindow::ContextMenuWindow(const Json::Value &v) : Fl_Window(200, 200, "Context Menu"), once_(true), value_(v) {
+ContextMenuWindow::ContextMenuWindow(std::vector<Fl_Menu_Item> &list) : Fl_Window(200, 200, "Context Menu"), once_(true), list_(list) {
     shape_.resize(1 * 1 * 4);
     Fl_RGB_Image img(shape_.data(), 1, 1, 4);
     shape(img);
 
     clear_border();
     box(FL_NO_BOX);
-
-    build(value_);
-}
-
-void ContextMenuWindow::build(Json::Value &value) {
-    if (!value.isArray()) {
-        return;
-    }
-    for (int i = 0; !value[i].isNull(); i++) {
-        auto &v = value[i];
-        auto type = v["type"].asString();
-        if (type == "submenu") {
-            list_.push_back({strdup(v["caption"].asString().c_str()), 0, 0, 0, FL_SUBMENU});
-            build(v["list"]);
-        }
-        if (type == "item") {
-            list_.push_back({strdup(v["caption"].asString().c_str()), 0, cb, &v});
-        }
-        if (type == "check") {
-            // TODO stub
-            list_.push_back({strdup(v["caption"].asString().c_str()), 0, cb, &v, FL_MENU_TOGGLE});
-        }
-    }
-    list_.push_back({0});
 }
 
 ContextMenuWindow::~ContextMenuWindow() {
