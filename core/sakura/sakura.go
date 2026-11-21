@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"uuid"
 
@@ -97,6 +98,7 @@ type Sakura struct {
 	direction_info directionInfo
 	http_client *http.Client
 	http_cancel with_mutex.WithMutex[string, context.CancelFunc]
+	is_menu_opening atomic.Bool
 }
 
 func toSide(side int) string {
@@ -154,6 +156,7 @@ func NewSakura(b interfaces.IBaseware, ghost ghost.Ghost, shell string, balloon 
 		direction_info: directionInfo{ m: sync.RWMutex{}, direction: make(map[int]bool) },
 		http_client: &http.Client{},
 		http_cancel: with_mutex.NewWithMutex[string, context.CancelFunc](),
+		is_menu_opening: atomic.Bool{},
 	}
 	s.wait_timer.Stop()
 	s.animation_timer.T.Stop()
@@ -1742,7 +1745,11 @@ func (s *Sakura) openMenu(from string) {
 }
 
 func (s *Sakura) openDefaultMenu(items []MenuItem, x int, y int) {
+	if !s.is_menu_opening.CompareAndSwap(false, true) {
+		return
+	}
 	go func() {
+		defer s.is_menu_opening.Store(false)
 		ctx, cancel := context.WithCancel(context.Background())
 		cmd := exec.CommandContext(ctx, filepath.Join(path.GuiDir(), "ninixw-contextmenu.exe"), strconv.Itoa(x), strconv.Itoa(y))
 		w, err := cmd.StdinPipe()
