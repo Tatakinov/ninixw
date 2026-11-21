@@ -23,10 +23,10 @@ namespace {
 ContextMenuWindow::ContextMenuWindow(const std::string &json_str, int x, int y) : Fl_Window(200, 200, "Context Menu"), once_(true), pos_x_(x), pos_y_(y) {
     shape_.resize(1 * 1 * 4);
     Fl_RGB_Image img(shape_.data(), 1, 1, 4);
-    //shape(img);
+    shape(img);
 
-    //clear_border();
-    //box(FL_NO_BOX);
+    clear_border();
+    box(FL_NO_BOX);
 
     Json::Reader reader;
     reader.parse(json_str, value_);
@@ -70,10 +70,10 @@ int ContextMenuWindow::handle(int e) {
                 shape_[(pos_y_ * w() + pos_x_) * 4 + 2] = 0xff;
                 shape_[(pos_y_ * w() + pos_x_) * 4 + 3] = 0xff;
                 Fl_RGB_Image img(shape_.data(), w(), h(), 4);
-                //shape(img);
+                shape(img);
             }
 #endif // WIN32
-            Fl::add_timeout(1, cb_show, this);
+            Fl::add_timeout(0.01, cb_show, this);
         }
         else {
             hide();
