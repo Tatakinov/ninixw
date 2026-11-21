@@ -20,7 +20,7 @@ namespace {
     };
 }
 
-ContextMenuWindow::ContextMenuWindow(const std::string &json_str, int x, int y) : Fl_Window(200, 200, "Context Menu"), once_(true), pos_x_(x), pos_y_(y) {
+ContextMenuWindow::ContextMenuWindow(const Json::Value &v) : Fl_Window(200, 200, "Context Menu"), once_(true), value_(v) {
     shape_.resize(1 * 1 * 4);
     Fl_RGB_Image img(shape_.data(), 1, 1, 4);
     shape(img);
@@ -28,8 +28,6 @@ ContextMenuWindow::ContextMenuWindow(const std::string &json_str, int x, int y) 
     clear_border();
     box(FL_NO_BOX);
 
-    Json::Reader reader;
-    reader.parse(json_str, value_);
     build(value_);
 }
 
@@ -63,17 +61,28 @@ int ContextMenuWindow::handle(int e) {
         once_ = false;
         if (list_.size() > 0) {
 #if defined(_WIN32) || defined(WIN32)
-            if (0 <= pos_x_ && pos_x_ < w() && 0 <= pos_y_ && pos_y_ < h()) {
+            int x = Fl::event_x();
+            int y = Fl::event_y();
+            if (0 <= x && x < w() && 0 <= y && y < h()) {
                 shape_.resize(w() * h() * 4);
-                shape_[(pos_y_ * w() + pos_x_) * 4 + 0] = 0xff;
-                shape_[(pos_y_ * w() + pos_x_) * 4 + 1] = 0xff;
-                shape_[(pos_y_ * w() + pos_x_) * 4 + 2] = 0xff;
-                shape_[(pos_y_ * w() + pos_x_) * 4 + 3] = 0xff;
+                shape_[(y * w() + x) * 4 + 0] = 0xff;
+                shape_[(y * w() + x) * 4 + 1] = 0xff;
+                shape_[(y * w() + x) * 4 + 2] = 0xff;
+                shape_[(y * w() + x) * 4 + 3] = 0xff;
+                Fl_RGB_Image img(shape_.data(), w(), h(), 4);
+                shape(img);
+            }
+            else {
+                shape_.resize(w() * h() * 4);
+                shape_[0] = 0xff;
+                shape_[1] = 0xff;
+                shape_[2] = 0xff;
+                shape_[3] = 0xff;
                 Fl_RGB_Image img(shape_.data(), w(), h(), 4);
                 shape(img);
             }
 #endif // WIN32
-            Fl::add_timeout(0.01, cb_show, this);
+            Fl::add_timeout(0.1, cb_show, this);
         }
         else {
             hide();

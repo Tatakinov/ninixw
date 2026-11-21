@@ -17,7 +17,7 @@ class ContextMenuWindow : public Fl_Window {
         std::vector<Fl_Menu_Item> list_;
         Json::Value value_;
     public:
-        ContextMenuWindow(const std::string &json_str, int x, int y);
+        ContextMenuWindow(const Json::Value &value);
         ~ContextMenuWindow();
 
         Fl_Menu_Item *menu() {
