@@ -3,9 +3,12 @@
 #include <string>
 #include <vector>
 
+#include <FL/Fl.H>
+#if FL_API_VERSION < 10400
 #if defined(_WIN32) || defined(WIN32)
 #include <FL/x.h>
 #endif // WIN32
+#endif // FL_API_VERSION < 10400
 
 #include "contextmenu.h"
 
@@ -37,7 +40,7 @@ int main(int argc, char *argv[]) {
     w->maximize();
 #else
 #if defined(_WIN32) || defined(WIN32)
-    ShowWindow(Fl::fl_xid(w), SW_MAXIMIZE);
+    ShowWindow(fl_xid(w), SW_MAXIMIZE);
 #else
     // TODO stub
 #endif // WIN32
