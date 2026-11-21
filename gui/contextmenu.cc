@@ -12,7 +12,7 @@ namespace {
     auto cb_show = [](void *data) {
         ContextMenuWindow *w = static_cast<ContextMenuWindow *>(data);
         Fl_Menu_Item *menu = w->menu();
-        const Fl_Menu_Item *item = menu->popup(w->pos_x(), w->pos_y());
+        const Fl_Menu_Item *item = menu->popup(Fl::event_x(), Fl::event_y());
         if (item != nullptr) {
             item->do_callback(w);
         }
