@@ -26,7 +26,7 @@ std::string toUTF8(std::string in) {
     }
     std::wstring w_tmp;
     w_tmp.resize(w_size);
-    MultiByteToWidtChar(932, MB_PRECOMPOSED, in.data(), in.length(), w_tmp.data(), w_tmp.length());
+    MultiByteToWideChar(932, MB_PRECOMPOSED, in.data(), in.length(), w_tmp.data(), w_tmp.length());
     int out_size = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, w_tmp.data(), w_tmp.length(), nullptr, 0, nullptr, nullptr);
     if (out_size == 0) {
         return in;
