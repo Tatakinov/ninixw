@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     }
     Fl_Window::default_xclass("io.github.tatakinov.gui.contextmenu");
     auto *w = new ContextMenuWindow(line, x, y);
-    w->border(0);
+    //w->border(0);
     w->resizable(w);
     w->end();
     w->show();
