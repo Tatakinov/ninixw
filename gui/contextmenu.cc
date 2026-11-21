@@ -9,6 +9,15 @@ namespace {
         builder["indentation"] = "";
         std::cout << Json::writeString(builder, *v) << std::endl;
     };
+    auto show = [](void *data) {
+        ContextMenuWindow *w = static_cast<ContextMenuWindow *>(data);
+        Fl_Menu_Item *menu = w->menu();
+        const Fl_Menu_Item *item = menu->popup(w->pos_x(), w->pos_y());
+        if (item != nullptr) {
+            item->do_callback(w);
+        }
+        w->hide();
+    };
 }
 
 ContextMenuWindow::ContextMenuWindow(const std::string &json_str, int x, int y) : Fl_Window(200, 200, "Context Menu"), once_(true), pos_x_(x), pos_y_(y) {
@@ -64,15 +73,7 @@ int ContextMenuWindow::handle(int e) {
                 //shape(img);
             }
 #endif // WIN32
-            Fl::add_timeout(0.01, [](void *data) {
-                ContextMenuWindow *w = static_cast<ContextMenuWindow *>(data);
-                Fl_Menu_Item *menu = w->menu();
-                const Fl_Menu_Item *item = menu->popup(w->pos_x(), w->pos_y());
-                if (item != nullptr) {
-                    item->do_callback(w);
-                }
-                w->hide();
-            }, this);
+            Fl::add_timeout(0.01, show, this);
         }
         return 1;
     }
